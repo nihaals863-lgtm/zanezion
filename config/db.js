@@ -2,11 +2,11 @@ const mysql = require('mysql2/promise');
 require('dotenv').config();
 
 const pool = mysql.createPool({
-    host: process.env.MYSQLHOST || process.env.DB_HOST || 'localhost',
-    user: process.env.MYSQLUSER || process.env.DB_USER || 'root',
-    password: process.env.MYSQLPASSWORD || process.env.DB_PASSWORD || '',
-    database: process.env.MYSQLDATABASE || process.env.DB_NAME || 'zanezion_db',
-    port: process.env.MYSQLPORT || 3306,
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'zanezion_db',
+    port: process.env.DB_PORT || 3306,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
@@ -16,11 +16,14 @@ const pool = mysql.createPool({
 (async () => {
     try {
         const connection = await pool.getConnection();
-        console.log('Successfully connected to MySQL database: ' + process.env.DB_NAME);
+        const dbName = process.env.DB_NAME || 'zanezion_db';
+        console.log(`Successfully connected to MySQL database: ${dbName}`);
         connection.release();
     } catch (err) {
-        console.error('Error connecting to MySQL database:', err.message);
-        console.log('Make sure to create the database "' + process.env.DB_NAME + '" and update .env credentials.');
+        const host = process.env.DB_HOST || 'localhost';
+        const dbName = process.env.DB_NAME || 'zanezion_db';
+        console.error(`Error connecting to MySQL database (${dbName}) on host (${host}):`, err.message);
+        console.log('Ensure Railway variables (MYSQLHOST, etc.) are set or update your dashboard environment variables.');
     }
 })();
 
