@@ -1,0 +1,118 @@
+const { Invoice, Transaction, Payroll } = require('../models/financeModel');
+
+const getInvoices = async (req, res) => {
+    try {
+        let invoices = await Invoice.getAll();
+        
+        // Role-based filtering
+        const role = req.user.role.toLowerCase().replace(/\s/g, '');
+        if (role === 'client') {
+            const Client = require('../models/clientModel');
+            const clientDetails = await Client.getByUserId(req.user.id);
+            if (clientDetails) {
+                invoices = invoices.filter(inv => inv.client_id === clientDetails.id);
+            } else {
+                invoices = [];
+            }
+        }
+        
+        res.json({ success: true, count: invoices.length, data: invoices });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const createInvoice = async (req, res) => {
+    try {
+        const invoiceId = await Invoice.create(req.body);
+        const newInvoice = await Invoice.getById(invoiceId);
+        res.status(201).json({ success: true, data: newInvoice });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const payInvoice = async (req, res) => {
+    try {
+        const transactionId = await Transaction.create({ ...req.body, invoice_id: req.params.id });
+        res.status(201).json({ success: true, message: 'Payment recorded', transaction_id: transactionId });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const createPayrollRecord = async (req, res) => {
+    try {
+        const payrollId = await Payroll.create(req.body);
+        res.status(201).json({ success: true, data: { id: payrollId, ...req.body } });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const getAllPayroll = async (req, res) => {
+    try {
+        const payrolls = await Payroll.getAll();
+        res.json({ success: true, count: payrolls.length, data: payrolls });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const getMyPayroll = async (req, res) => {
+    try {
+        const payrolls = await Payroll.getByUserId(req.user.id);
+        res.json({ success: true, count: payrolls.length, data: payrolls });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const deletePayroll = async (req, res) => {
+    try {
+        await Payroll.delete(req.params.id);
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const updateInvoice = async (req, res) => {
+    try {
+        await Invoice.update(req.params.id, req.body);
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const updatePayroll = async (req, res) => {
+    try {
+        await Payroll.update(req.params.id, req.body);
+        res.json({ success: true, message: 'Payroll record updated' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const deleteInvoice = async (req, res) => {
+    try {
+        await Invoice.delete(req.params.id);
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+module.exports = {
+    getInvoices,
+    createInvoice,
+    payInvoice,
+    createPayrollRecord,
+    getAllPayroll,
+    getMyPayroll,
+    deletePayroll,
+    updateInvoice,
+    deleteInvoice,
+    updatePayroll
+};

@@ -1,0 +1,112 @@
+const SubscriptionRequest = require('../models/saasModel');
+const Client = require('../models/clientModel');
+const crypto = require('crypto');
+
+const saasController = {
+    submitRequest: async (req, res, next) => {
+        try {
+            const requestId = await SubscriptionRequest.create(req.body);
+            res.status(201).json({ 
+                success: true, 
+                id: requestId, 
+                message: 'Subscription protocol registry received. Our HQ will audit your application shortly.' 
+            });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    getRequests: async (req, res, next) => {
+        try {
+            const requests = await SubscriptionRequest.getAll();
+            res.json({ success: true, data: requests });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    updateRequestStatus: async (req, res, next) => {
+        try {
+            const { id } = req.params;
+            const { status } = req.body;
+
+            const success = await SubscriptionRequest.updateStatus(id, status);
+            if (!success) return res.status(404).json({ message: 'Request not found' });
+            
+            res.json({ success: true, message: `Request ${status.toLowerCase()} successfully` });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    // Provision a SaaS client: creates user + client records with generated password
+    provisionClient: async (req, res, next) => {
+        try {
+            const { id } = req.params;
+
+            // 1. Get the subscription request
+            const request = await SubscriptionRequest.getById(id);
+            if (!request) {
+                return res.status(404).json({ success: false, message: 'Subscription request not found' });
+            }
+
+            // 2. Generate a random password
+            const generatedPassword = crypto.randomBytes(4).toString('hex'); // 8-char hex password
+
+            // 3. Create user + client via Client.create() (handles users + clients tables with hashed password)
+            const clientId = await Client.create({
+                name: request.client_name,
+                email: request.email,
+                phone: request.contact || null,
+                password: generatedPassword,
+                location: request.country || 'Bahamas',
+                client_type: 'SaaS',
+                plan: (request.plan || 'Standard').replace(' Protocol', ''),
+                billing_cycle: 'Monthly',
+                payment_method: 'Credit Card',
+                contact_person: request.contact,
+                business_name: request.client_name,
+                source: 'Subscriber',
+                status: 'active'
+            });
+
+            // 4. Update subscription request status to Provisioned
+            await SubscriptionRequest.updateStatus(id, 'Provisioned');
+
+            // 5. Return credentials (plain text password) so admin can share with client
+            res.json({
+                success: true,
+                message: 'Client provisioned successfully',
+                data: {
+                    clientId,
+                    clientName: request.client_name,
+                    email: request.email,
+                    password: generatedPassword,
+                    plan: request.plan
+                }
+            });
+        } catch (error) {
+            // Handle duplicate email gracefully
+            if (error.code === 'ER_DUP_ENTRY') {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'A user with this email already exists. Client may have already been provisioned.' 
+                });
+            }
+            next(error);
+        }
+    },
+
+    deleteRequest: async (req, res, next) => {
+        try {
+            const { id } = req.params;
+            const success = await SubscriptionRequest.delete(id);
+            if (!success) return res.status(404).json({ message: 'Request not found' });
+            res.json({ success: true, message: 'Request deleted successfully' });
+        } catch (error) {
+            next(error);
+        }
+    }
+};
+
+module.exports = saasController;
