@@ -10,12 +10,14 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(255) UNIQUE NOT NULL,
     phone VARCHAR(20),
     password VARCHAR(255) NOT NULL,
+    company_id INT DEFAULT NULL,
     role ENUM('super_admin', 'operations', 'procurement', 'inventory', 'logistics', 'finance', 'sales', 'support', 'Field Staff', 'Operational Staff', 'Concierge Manager', 'Logistics Lead', 'Inventory Manager', 'Client', 'Vendor') DEFAULT 'operations',
-    status ENUM('active', 'inactive', 'on_leave', 'Active', 'Inactive', 'On Leave') DEFAULT 'Active',
+    status VARCHAR(50) DEFAULT 'Active',
     avatar_url VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP NULL
+    deleted_at TIMESTAMP NULL,
+    FOREIGN KEY (company_id) REFERENCES clients(id) ON DELETE CASCADE
 );
 
 -- 2. CLIENTS (SaaS & Enterprise Business Data)
@@ -73,13 +75,16 @@ CREATE TABLE IF NOT EXISTS vendors (
     contact_name VARCHAR(255),
     email VARCHAR(255) UNIQUE,
     phone VARCHAR(20),
+    company_id INT DEFAULT NULL,
     address TEXT,
     category VARCHAR(100),
     status ENUM('active', 'inactive') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+    deleted_at TIMESTAMP NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (company_id) REFERENCES clients(id) ON DELETE CASCADE
 );
 
 -- 4. WAREHOUSES
@@ -88,10 +93,12 @@ CREATE TABLE IF NOT EXISTS warehouses (
     name VARCHAR(255) NOT NULL,
     location TEXT,
     manager_id INT,
+    company_id INT DEFAULT NULL,
     status ENUM('active', 'inactive') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (manager_id) REFERENCES users(id) ON DELETE SET NULL
+    FOREIGN KEY (manager_id) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (company_id) REFERENCES clients(id) ON DELETE CASCADE
 );
 
 -- 5. INVENTORY_ITEMS
@@ -109,13 +116,16 @@ CREATE TABLE IF NOT EXISTS inventory_items (
     price DECIMAL(10, 2),
     inventory_type ENUM('Marketplace', 'Client') DEFAULT 'Marketplace',
     client_id INT,
+    company_id INT DEFAULT NULL,
     status ENUM('in_stock', 'out_of_stock', 'low_stock') DEFAULT 'in_stock',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL,
+    deleted_at TIMESTAMP NULL,
     FOREIGN KEY (warehouse_id) REFERENCES warehouses(id) ON DELETE SET NULL,
     FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE SET NULL,
-    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL
+    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL,
+    FOREIGN KEY (company_id) REFERENCES clients(id) ON DELETE CASCADE
 );
 
 -- 6. ORDERS
@@ -183,6 +193,7 @@ CREATE TABLE IF NOT EXISTS staff_assignments (
 CREATE TABLE IF NOT EXISTS projects (
     id INT AUTO_INCREMENT PRIMARY KEY,
     order_id INT NOT NULL,
+    company_id INT DEFAULT NULL,
     name VARCHAR(255) NOT NULL,
     description TEXT,
     manager_id INT,
@@ -193,6 +204,7 @@ CREATE TABLE IF NOT EXISTS projects (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (order_id) REFERENCES orders(id),
     FOREIGN KEY (manager_id) REFERENCES users(id),
+    FOREIGN KEY (company_id) REFERENCES clients(id) ON DELETE CASCADE,
     deleted_at TIMESTAMP NULL
 );
 
@@ -202,9 +214,10 @@ CREATE TABLE IF NOT EXISTS vehicles (
     plate_number VARCHAR(20) UNIQUE NOT NULL,
     model VARCHAR(100),
     type VARCHAR(50),
+    company_id INT DEFAULT NULL,
     fuel_level INT DEFAULT 100,
     vehicle_type ENUM('Van', 'Boat', 'Truck', 'Car', 'Plane') DEFAULT 'Truck',
-    status ENUM('available', 'on_mission', 'maintenance', 'out_of_service', 'Available', 'Offline') DEFAULT 'available',
+    status VARCHAR(50) DEFAULT 'available',
     capacity VARCHAR(50),
     insurance_policy VARCHAR(100),
     registration_expiry DATE,
@@ -299,11 +312,17 @@ CREATE TABLE IF NOT EXISTS purchase_requests (
     priority VARCHAR(50),
     department VARCHAR(100),
     client_id INT NULL,
+    company_id INT DEFAULT NULL,
     status VARCHAR(50) DEFAULT 'Pending',
+    approval_status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+    approved_by_id INT NULL,
+    approval_date TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (item_id) REFERENCES inventory_items(id),
-    FOREIGN KEY (requester_id) REFERENCES users(id)
+    FOREIGN KEY (requester_id) REFERENCES users(id),
+    FOREIGN KEY (company_id) REFERENCES clients(id) ON DELETE CASCADE,
+    FOREIGN KEY (approved_by_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
 -- 13. QUOTES
@@ -325,13 +344,19 @@ CREATE TABLE IF NOT EXISTS quotes (
 CREATE TABLE IF NOT EXISTS purchase_orders (
     id INT AUTO_INCREMENT PRIMARY KEY,
     vendor_id INT NOT NULL,
+    company_id INT DEFAULT NULL,
     vendor_name VARCHAR(255),
     total DECIMAL(15, 2) DEFAULT 0.00,
     status ENUM('Pending', 'Partially Received', 'Completed') DEFAULT 'Pending',
+    approval_status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+    approved_by_id INT NULL,
+    approval_date TIMESTAMP NULL,
     date DATE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (vendor_id) REFERENCES vendors(id)
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id),
+    FOREIGN KEY (company_id) REFERENCES clients(id) ON DELETE CASCADE,
+    FOREIGN KEY (approved_by_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
 -- 13.2 PURCHASE_ORDER_ITEMS
@@ -387,7 +412,7 @@ CREATE TABLE IF NOT EXISTS payroll (
     net_amount DECIMAL(15, 2) NOT NULL,
     amount DECIMAL(10, 2) NOT NULL, -- Keep for compatibility if needed
     payment_date DATE,
-    status ENUM('pending', 'processed', 'failed', 'Paid', 'Pending') DEFAULT 'pending',
+    status VARCHAR(50) DEFAULT 'pending',
     method VARCHAR(50) DEFAULT 'Direct Deposit',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
