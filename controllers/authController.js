@@ -31,7 +31,7 @@ const registerUser = async (req, res) => {
                     name,
                     email,
                     role,
-                    token: generateToken(userId, role)
+                    token: generateToken(userId, role, req.body.companyId || null)
                 }
             });
         } else {
@@ -93,7 +93,7 @@ const loginUser = async (req, res) => {
                     id: user.id,
                     role: user.role,
                     menuPermissions,
-                    token: generateToken(user.id, user.role)
+                    token: generateToken(user.id, user.role, user.company_id || (user.role === 'Client' ? details.id : null))
                 }
             });
         } else {

@@ -8,6 +8,7 @@ class PurchaseOrder {
         const total = data.total_amount || data.total || 0;
         const items = data.items;
         const date = data.date || new Date().toISOString().split('T')[0];
+        const companyId = data.companyId || data.company_id || null;
 
         const connection = await db.getConnection();
         try {
@@ -43,8 +44,8 @@ class PurchaseOrder {
             }
 
             const [result] = await connection.execute(
-                'INSERT INTO purchase_orders (vendor_id, vendor_name, total, status, date) VALUES (?, ?, ?, ?, ?)',
-                [resolvedVendorId, vendorName || null, total, 'Pending', date]
+                'INSERT INTO purchase_orders (vendor_id, vendor_name, total, status, date, company_id, approval_status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [resolvedVendorId, vendorName || null, total, 'Pending', date, companyId, 'Pending']
             );
 
             const poId = result.insertId;
@@ -68,13 +69,20 @@ class PurchaseOrder {
         }
     }
 
-    static async getAll() {
-        const [rows] = await db.execute(
-            `SELECT po.*, v.name AS resolved_vendor_name 
+    static async getAll(companyId = null) {
+        let query = `SELECT po.*, v.name AS resolved_vendor_name 
              FROM purchase_orders po 
-             LEFT JOIN vendors v ON po.vendor_id = v.id 
-             ORDER BY po.created_at DESC`
-        );
+             LEFT JOIN vendors v ON po.vendor_id = v.id`;
+        const params = [];
+        
+        if (companyId) {
+            query += ` WHERE po.company_id = ?`;
+            params.push(companyId);
+        }
+        
+        query += ` ORDER BY po.created_at DESC`;
+
+        const [rows] = await db.execute(query, params);
         const results = [];
         for (const row of rows) {
             const [itemRows] = await db.execute('SELECT * FROM purchase_order_items WHERE po_id = ?', [row.id]);
@@ -84,6 +92,8 @@ class PurchaseOrder {
                 vendorName: row.resolved_vendor_name || row.vendor_name || 'Unknown Vendor',
                 total: row.total,
                 status: row.status,
+                approvalStatus: row.approval_status,
+                companyId: row.company_id,
                 date: row.date,
                 items: itemRows.map(item => ({
                     id: item.id,
@@ -99,13 +109,19 @@ class PurchaseOrder {
         return results;
     }
 
-    static async getById(id) {
-        const [poRows] = await db.execute(
-            `SELECT po.*, v.name AS resolved_vendor_name 
+    static async getById(id, companyId = null) {
+        let query = `SELECT po.*, v.name AS resolved_vendor_name 
              FROM purchase_orders po 
              LEFT JOIN vendors v ON po.vendor_id = v.id 
-             WHERE po.id = ?`, [id]
-        );
+             WHERE po.id = ?`;
+        const params = [id];
+             
+        if (companyId) {
+            query += ` AND po.company_id = ?`;
+            params.push(companyId);
+        }
+             
+        const [poRows] = await db.execute(query, params);
         if (poRows.length === 0) return null;
         const row = poRows[0];
 
@@ -116,6 +132,8 @@ class PurchaseOrder {
             vendorName: row.resolved_vendor_name || row.vendor_name || 'Unknown Vendor',
             total: row.total,
             status: row.status,
+            approvalStatus: row.approval_status,
+            companyId: row.company_id,
             date: row.date,
             items: itemRows.map(item => ({
                 id: item.id,
@@ -179,8 +197,8 @@ class PurchaseOrder {
         }
     }
 
-    static async update(id, updateData) {
-        const allowedFields = ['status', 'vendor_id', 'vendor_name', 'total', 'date'];
+    static async update(id, updateData, companyId = null) {
+        const allowedFields = ['status', 'approval_status', 'vendor_id', 'vendor_name', 'total', 'date', 'approved_by_id', 'approval_date'];
         const data = {};
         Object.keys(updateData).forEach(key => {
             // Handle both camelCase and snake_case
@@ -188,6 +206,7 @@ class PurchaseOrder {
             if (key === 'vendorId') dbField = 'vendor_id';
             if (key === 'vendorName') dbField = 'vendor_name';
             if (key === 'totalAmount') dbField = 'total';
+            if (key === 'approvalStatus') dbField = 'approval_status';
 
             if (allowedFields.includes(dbField) && updateData[key] !== undefined) {
                 data[dbField] = updateData[key];
@@ -198,7 +217,14 @@ class PurchaseOrder {
 
         const fields = Object.keys(data).map(key => `${key} = ?`).join(', ');
         const values = [...Object.values(data), id];
-        const [result] = await db.execute(`UPDATE purchase_orders SET ${fields} WHERE id = ?`, values);
+        
+        let query = `UPDATE purchase_orders SET ${fields} WHERE id = ?`;
+        if (companyId) {
+            query += ` AND company_id = ?`;
+            values.push(companyId);
+        }
+        
+        const [result] = await db.execute(query, values);
         return result.affectedRows > 0;
     }
 }

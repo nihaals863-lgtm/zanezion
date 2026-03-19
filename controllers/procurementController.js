@@ -5,8 +5,9 @@ const { PurchaseOrder, PurchaseRequest, Quote } = require('../models/procurement
 // @access  Private (Procurement/Admin)
 const createPO = async (req, res) => {
     try {
-        const poId = await PurchaseOrder.create(req.body);
-        const newPO = await PurchaseOrder.getById(poId);
+        const payload = { ...req.body, companyId: req.user.companyId };
+        const poId = await PurchaseOrder.create(payload);
+        const newPO = await PurchaseOrder.getById(poId, req.user.companyId);
         res.status(201).json({ success: true, data: newPO });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -18,7 +19,7 @@ const createPO = async (req, res) => {
 // @access  Private
 const getAllPOs = async (req, res) => {
     try {
-        const pos = await PurchaseOrder.getAll();
+        const pos = await PurchaseOrder.getAll(req.user.companyId);
         res.json({ success: true, data: pos });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -30,7 +31,7 @@ const getAllPOs = async (req, res) => {
 // @access  Private
 const getPOById = async (req, res) => {
     try {
-        const po = await PurchaseOrder.getById(req.params.id);
+        const po = await PurchaseOrder.getById(req.params.id, req.user.companyId);
         if (!po) return res.status(404).json({ success: false, message: 'PO not found' });
         res.json({ success: true, data: po });
     } catch (error) {
@@ -43,7 +44,23 @@ const getPOById = async (req, res) => {
 // @access  Private (Procurement/Admin)
 const updatePO = async (req, res) => {
     try {
-        await PurchaseOrder.update(req.params.id, req.body);
+        const updateData = { ...req.body };
+        
+        // Authorization Workflow logic
+        if (updateData.approvalStatus && updateData.approvalStatus !== 'Pending') {
+            if (req.user.role !== 'Super Admin' && req.user.role !== 'super_admin') {
+                return res.status(403).json({ success: false, message: 'Only a Super Admin can approve or reject Purchase Orders.' });
+            }
+            updateData.approved_by_id = req.user.id;
+            updateData.approval_date = new Date().toISOString().slice(0, 19).replace('T', ' ');
+            
+            // Auto update overall status if approved
+            if (updateData.approvalStatus === 'Approved' && !updateData.status) {
+                updateData.status = 'Approved'; 
+            }
+        }
+
+        await PurchaseOrder.update(req.params.id, updateData, req.user.companyId);
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
