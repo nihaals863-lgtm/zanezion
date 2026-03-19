@@ -1,29 +1,37 @@
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
-const pool = mysql.createPool({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'zanezion_db',
-    port: process.env.DB_PORT || 3306,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
-});
+// Railway uses MYSQLHOST/RAILWAYMYSQL vars internally; fall back to local DB_ vars
+const isRailway = !!(process.env.MYSQLHOST || process.env.DB_HOST?.includes('rlwy.net'));
 
-// Test connection
+const dbConfig = {
+    host:     process.env.MYSQLHOST     || process.env.DB_HOST     || 'localhost',
+    user:     process.env.MYSQLUSER     || process.env.DB_USER     || 'root',
+    password: process.env.MYSQLPASSWORD || process.env.DB_PASSWORD || '',
+    database: process.env.MYSQLDATABASE || process.env.DB_NAME     || 'zanezion_db',
+    port:  Number(process.env.MYSQLPORT || process.env.DB_PORT     || 3306),
+    waitForConnections: true,
+    connectionLimit: 20,
+    queueLimit: 0,
+    connectTimeout: 30000,
+    // Keep connections alive so Railway doesn't drop them (ECONNRESET fix)
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 10000, // send keepalive ping every 10s
+    // Enable SSL for Railway's public proxy (autorack.proxy.rlwy.net)
+    ssl: isRailway ? { rejectUnauthorized: false } : undefined,
+};
+
+const pool = mysql.createPool(dbConfig);
+
+// Test connection on startup
 (async () => {
     try {
         const connection = await pool.getConnection();
-        const dbName = process.env.DB_NAME || 'zanezion_db';
-        console.log(`Successfully connected to MySQL database: ${dbName}`);
+        console.log(`✅ MySQL connected: ${dbConfig.database} @ ${dbConfig.host}:${dbConfig.port}`);
         connection.release();
     } catch (err) {
-        const host = process.env.DB_HOST || 'localhost';
-        const dbName = process.env.DB_NAME || 'zanezion_db';
-        console.error(`Error connecting to MySQL database (${dbName}) on host (${host}):`, err.message);
-        console.log('Ensure Railway variables (MYSQLHOST, etc.) are set or update your dashboard environment variables.');
+        console.error(`❌ MySQL connection failed (${dbConfig.database} @ ${dbConfig.host}):`, err.message);
+        console.log('Check Railway MySQL environment variables are correctly set.');
     }
 })();
 
