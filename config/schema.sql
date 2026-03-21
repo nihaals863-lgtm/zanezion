@@ -28,15 +28,15 @@ CREATE TABLE IF NOT EXISTS clients (
     location VARCHAR(100),
     source VARCHAR(50) DEFAULT 'Manual',
     client_type ENUM('SaaS', 'Personal') DEFAULT 'Personal',
-    plan ENUM('Starter', 'Professional', 'Enterprise') DEFAULT 'Starter',
-    billing_cycle ENUM('Monthly', 'Annual') DEFAULT 'Monthly',
+    plan VARCHAR(50) DEFAULT 'Starter',
+    billing_cycle VARCHAR(50) DEFAULT 'Monthly',
     payment_method VARCHAR(50),
     contact_person VARCHAR(100),
     business_name VARCHAR(100),
     logo_url VARCHAR(255),
     primary_color VARCHAR(20),
     tagline VARCHAR(255),
-    status ENUM('active', 'inactive', 'pending') DEFAULT 'active',
+    status VARCHAR(50) DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL,
@@ -165,11 +165,11 @@ CREATE TABLE IF NOT EXISTS order_items (
 CREATE TABLE IF NOT EXISTS leave_requests (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    type ENUM('Annual', 'Sick', 'Personal', 'Other') NOT NULL,
+    type VARCHAR(50) NOT NULL,
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
     reason TEXT,
-    status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+    status VARCHAR(50) DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
@@ -182,8 +182,8 @@ CREATE TABLE IF NOT EXISTS staff_assignments (
     task_name VARCHAR(255) NOT NULL,
     description TEXT,
     due_date DATE,
-    priority ENUM('Low', 'Medium', 'High') DEFAULT 'Medium',
-    status ENUM('pending', 'in_progress', 'completed') DEFAULT 'pending',
+    priority VARCHAR(50) DEFAULT 'Medium',
+    status VARCHAR(50) DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (assignee_id) REFERENCES users(id)
@@ -535,14 +535,14 @@ CREATE TABLE IF NOT EXISTS access_plans (
 -- Passwords provided by user or generated for sample roles
 -- superadmin: 123456
 INSERT IGNORE INTO users (id, name, email, phone, password, role, status) VALUES 
-(1, 'Super Admin', 'admin@zanezion.com', '1234567890', '$2b$10$69bt5Yn/motv.7i19/6tU.H9OrHQ9sKefghjXLBdbpzxbbR.pVBGS', 'super_admin', 'active'),
-(2, 'Concierge Manager', 'demo1@example.com', '242-555-0101', '$2b$10$KvClv84DpwJpDO9TPiMq6.DAM3hZMW0Gj5SSSto5lFZkrc1n2ZxDO', 'Concierge Manager', 'active'),
-(3, 'Operations Lead', 'opertion@example.com', '242-555-0102', '$2b$10$0fOeRBzeddnRsi/g/.6z6uSvlIXKfxzjCMneIVCfca8VI.TC9owem', 'operations', 'active'),
-(4, 'Logistics Lead', 'logistic@example.com', '242-555-0103', '$2b$10$eOMPfqNzJGJxKwpLTT3sOO3fqr2BPXy5NGBCF1i10CUfwdMhOCFFq', 'Logistics Lead', 'active'),
-(5, 'Field Staff Alpha', 'staff@example.com', '242-555-0104', '$2b$10$Q/etFD1AKCP58XFbg3nqoes88g5w2NMlLtJ5UdS8IhjsRADh.TOVS', 'Field Staff', 'active'),
-(6, 'Procurement Officer', 'procurement@example.com', '242-555-0105', '$2b$10$Mi1juJzxqr8VJ.ShB9RB2OfGjkGwF5Ew/ju3d6/aZ10TV9jKtZhgi', 'procurement', 'active'),
-(7, 'Inventory Manager', 'inventroy@example.com', '242-555-0106', '$2b$10$v9wj.qnvtkm7/b4HUwhACu8B3npjnefuD/q.Nzg8AXGp8/4H5Xa2K', 'Inventory Manager', 'active'),
-(8, 'Enterprise Client', 'client11@exampel.com', '242-555-0107', '$2b$10$.WzmrMM9.FU.opU3Nsvt4uMMx7G73dVQViyONLMBKnCuGnAoFdo22', 'Client', 'active');
+(1, 'Super Admin', 'admin@zanezion.com', '1234567890', '$2b$10$NMHc/e/749tXRmDvOkssPL3Tp9Grhy', 'super_admin', 'active'),
+(2, 'Concierge Manager', 'demo1@example.com', '242-555-0101', '$2b$10$NMHc/e/749tXRmDvOkssPL3Tp9Grhy', 'Concierge Manager', 'active'),
+(3, 'Operations Lead', 'operation@example.com', '242-555-0102', '$2b$10$NMHc/e/749tXRmDvOkssPL3Tp9Grhy', 'operations', 'active'),
+(4, 'Logistics Lead', 'logistics@example.com', '242-555-0103', '$2b$10$NMHc/e/749tXRmDvOkssPL3Tp9Grhy', 'Logistics Lead', 'active'),
+(5, 'Field Staff Alpha', 'staff@example.com', '242-555-0104', '$2b$10$NMHc/e/749tXRmDvOkssPL3Tp9Grhy', 'Field Staff', 'active'),
+(6, 'Procurement Officer', 'procurement@example.com', '242-555-0105', '$2b$10$NMHc/e/749tXRmDvOkssPL3Tp9Grhy', 'procurement', 'active'),
+(7, 'Inventory Manager', 'inventory@example.com', '242-555-0106', '$2b$10$NMHc/e/749tXRmDvOkssPL3Tp9Grhy', 'Inventory Manager', 'active'),
+(8, 'Enterprise Client', 'client11@example.com', '242-555-0107', '$2b$10$NMHc/e/749tXRmDvOkssPL3Tp9Grhy', 'Client', 'active');
 
 -- 2. STAFF DETAILS (Employment Records for Users 1-7)
 INSERT IGNORE INTO staff_details (user_id, employment_status, vacation_balance, is_available) VALUES 
@@ -604,30 +604,69 @@ INSERT IGNORE INTO invoices (id, order_id, mission_id, client_id, amount, status
 (3001, 1001, NULL, 1, 25000.00, 'unpaid'),
 (3002, 1002, 5002, 1, 890.00, 'partially_paid');
 
--- 22. AUDITS (Procurement/Compliance)
-CREATE TABLE IF NOT EXISTS audits (
+-- 24. RBAC (Role Based Access Control)
+CREATE TABLE IF NOT EXISTS roles (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    type VARCHAR(255),
-    auditor VARCHAR(255),
-    date DATE,
-    accuracy VARCHAR(100),
-    status VARCHAR(50),
+    name VARCHAR(100) UNIQUE NOT NULL,
+    description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 23. SUBSCRIPTION_REQUESTS (SaaS Onboarding)
-CREATE TABLE IF NOT EXISTS subscription_requests (
+CREATE TABLE IF NOT EXISTS menus (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    client_name VARCHAR(255) NOT NULL,
-    plan VARCHAR(100) NOT NULL,
-    contact VARCHAR(255) NOT NULL,
-    email VARCHAR(255) NOT NULL,
-    country VARCHAR(100),
-    requirements TEXT,
-    property_type VARCHAR(100),
-    throughput VARCHAR(50),
-    status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
-    request_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    name VARCHAR(100) NOT NULL,
+    path VARCHAR(255) NOT NULL,
+    icon VARCHAR(50),
+    parent_id INT DEFAULT NULL,
+    sort_order INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS role_menu_permissions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    role_id INT NOT NULL,
+    menu_id INT NOT NULL,
+    can_view BOOLEAN DEFAULT FALSE,
+    can_add BOOLEAN DEFAULT FALSE,
+    can_edit BOOLEAN DEFAULT FALSE,
+    can_delete BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
+    FOREIGN KEY (menu_id) REFERENCES menus(id) ON DELETE CASCADE,
+    UNIQUE KEY (role_id, menu_id)
+);
+
+-- SEED DATA FOR RBAC
+INSERT IGNORE INTO roles (id, name, description) VALUES 
+(1, 'super_admin', 'Full access to all modules'),
+(2, 'concierge_manager', 'Access to concierge and event modules'),
+(3, 'operations', 'Access to operational workflows'),
+(4, 'logistics_lead', 'Fleet and mission management'),
+(5, 'field_staff', 'Task and mission updates'),
+(6, 'procurement', 'Purchase request and quote management'),
+(7, 'inventory_manager', 'Warehouse and stock control'),
+(8, 'client', 'Client portal access'),
+(9, 'vendor', 'Vendor portal access');
+
+INSERT IGNORE INTO menus (id, name, path, icon, sort_order) VALUES 
+(1, 'Dashboard', '/dashboard', 'LayoutDashboard', 1),
+(2, 'Orders', '/orders', 'ShoppingCart', 2),
+(3, 'Procurement', '/procurement', 'ShoppingBag', 3),
+(4, 'Inventory', '/inventory', 'Package', 4),
+(5, 'Logistics', '/logistics', 'Truck', 5),
+(6, 'Concierge', '/concierge', 'Heart', 6),
+(7, 'Clients', '/clients', 'Users', 7),
+(8, 'Vendors', '/vendors', 'Store', 8),
+(9, 'Staff', '/staff', 'Smartphone', 9),
+(10, 'Finance', '/finance', 'CircleDollarSign', 10),
+(11, 'Settings', '/settings', 'Settings', 11);
+
+-- Grant all permissions to super_admin (Role 1) for all menus (1-11)
+INSERT IGNORE INTO role_menu_permissions (role_id, menu_id, can_view, can_add, can_edit, can_delete)
+SELECT 1, id, 1, 1, 1, 1 FROM menus;
+
+-- Grant standard permissions to client (Role 8) - dashboard, orders, concierge, settings
+INSERT IGNORE INTO role_menu_permissions (role_id, menu_id, can_view, can_add, can_edit, can_delete) VALUES
+(8, 1, 1, 0, 0, 0), -- Dashboard
+(8, 2, 1, 1, 0, 0), -- Orders
+(8, 6, 1, 1, 1, 0), -- Concierge
+(8, 11, 1, 0, 1, 0); -- Settings

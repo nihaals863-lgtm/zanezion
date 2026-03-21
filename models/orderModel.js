@@ -152,17 +152,57 @@ class Order {
     }
 
     static async update(id, updateData) {
-        const allowedFields = ['client_id', 'company_id', 'vendor_id', 'type', 'notes', 'total_amount', 'status', 'due_date', 'order_date'];
-        const data = Object.entries(updateData)
-            .filter(([key, value]) => value !== undefined && allowedFields.includes(key))
-            .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
+        const connection = await db.getConnection();
+        try {
+            await connection.beginTransaction();
 
-        if (Object.keys(data).length === 0) return true;
+            const allowedFields = ['client_id', 'company_id', 'vendor_id', 'type', 'notes', 'total_amount', 'status', 'due_date', 'order_date'];
+            
+            // Map camelCase to snake_case if present
+            const normalizedData = {
+                ...updateData,
+                client_id: updateData.clientId || updateData.client_id,
+                company_id: updateData.companyId || updateData.company_id,
+                vendor_id: updateData.vendorId || updateData.vendor_id,
+                due_date: updateData.dueDate || updateData.due_date,
+                order_date: updateData.orderDate || updateData.order_date || updateData.date,
+                total_amount: updateData.total || updateData.totalAmount || updateData.total_amount
+            };
 
-        const fields = Object.keys(data).map(key => `${key} = ?`).join(', ');
-        const values = [...Object.values(data), id];
-        const [result] = await db.execute(`UPDATE orders SET ${fields} WHERE id = ?`, values);
-        return result.affectedRows > 0;
+            const data = Object.entries(normalizedData)
+                .filter(([key, value]) => value !== undefined && allowedFields.includes(key))
+                .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
+
+            if (Object.keys(data).length > 0) {
+                const fields = Object.keys(data).map(key => `${key} = ?`).join(', ');
+                const values = [...Object.values(data), id];
+                await connection.execute(`UPDATE orders SET ${fields} WHERE id = ?`, values);
+            }
+
+            // Handle Item Updates if passed: simpler to clear and re-insert given current schema
+            if (updateData.items && Array.isArray(updateData.items)) {
+                await connection.execute('DELETE FROM order_items WHERE order_id = ?', [id]);
+                for (const item of updateData.items) {
+                    const name = item.name || item.product || null;
+                    const quantity = item.quantity || item.qty || 0;
+                    const unit_price = item.unit_price || item.price || 0;
+                    const totalPrice = quantity * unit_price;
+                    
+                    await connection.execute(
+                        'INSERT INTO order_items (order_id, item_id, name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?)',
+                        [id, item.item_id || null, name, quantity, unit_price, totalPrice]
+                    );
+                }
+            }
+
+            await connection.commit();
+            return true;
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
+        }
     }
 
     static async softDelete(id) {

@@ -8,7 +8,8 @@ class User {
             status, employment_status, is_salaried, vacation_balance,
             bank_name, account_number, routing_number, payment_method, nib_number, birthday,
             has_passport, has_license, has_nib_doc, has_police_record,
-            has_resume, has_profile_pic, has_certs, is_available
+            has_resume, has_profile_pic, has_certs, is_available,
+            passport_url, license_url, nib_document_url, police_record_url, profile_pic_url
         } = userData;
         
         const salt = await bcrypt.genSalt(10);
@@ -32,14 +33,16 @@ class User {
                         user_id, employment_status, is_salaried, vacation_balance, 
                         bank_name, account_number, routing_number, payment_method, nib_number, birthday,
                         has_passport, has_license, has_nib_doc, has_police_record,
-                        has_resume, has_profile_pic, has_certs, is_available
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                        has_resume, has_profile_pic, has_certs, is_available,
+                        passport_url, license_url, nib_document_url, police_record_url, profile_pic_url
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                     [
                         userId, employment_status || 'Full Time', is_salaried ?? true, vacation_balance || 0,
                         bank_name || null, account_number || null, routing_number || null, payment_method || null,
                         nib_number || null, birthday || null,
                         has_passport || false, has_license || false, has_nib_doc || false, has_police_record || false,
-                        has_resume || false, has_profile_pic || false, has_certs || false, is_available ?? true
+                        has_resume || false, has_profile_pic || false, has_certs || false, is_available ?? true,
+                        passport_url || null, license_url || null, nib_document_url || null, police_record_url || null, profile_pic_url || null
                     ]
                 );
             }
@@ -56,7 +59,7 @@ class User {
 
     static async findByEmail(email) {
         const [rows] = await db.execute(`
-            SELECT u.*, sd.* 
+            SELECT u.*, sd.*, u.id as id 
             FROM users u 
             LEFT JOIN staff_details sd ON u.id = sd.user_id 
             WHERE u.email = ? AND u.deleted_at IS NULL
@@ -66,7 +69,7 @@ class User {
 
     static async findById(id) {
         const [rows] = await db.execute(`
-            SELECT u.*, sd.* 
+            SELECT u.*, sd.*, u.id as id 
             FROM users u 
             LEFT JOIN staff_details sd ON u.id = sd.user_id 
             WHERE u.id = ? AND u.deleted_at IS NULL
@@ -76,7 +79,7 @@ class User {
 
     static async findAll() {
         const [rows] = await db.execute(`
-            SELECT u.*, sd.* 
+            SELECT u.*, sd.*, u.id as id 
             FROM users u 
             LEFT JOIN staff_details sd ON u.id = sd.user_id 
             WHERE u.deleted_at IS NULL AND u.role NOT IN ('Client', 'Vendor')
@@ -94,7 +97,8 @@ class User {
             'employment_status', 'is_salaried', 'vacation_balance', 'bank_name', 
             'account_number', 'routing_number', 'payment_method', 'nib_number', 'birthday',
             'has_passport', 'has_license', 'has_nib_doc', 'has_police_record',
-            'has_resume', 'has_profile_pic', 'has_certs', 'is_available'
+            'has_resume', 'has_profile_pic', 'has_certs', 'is_available',
+            'passport_url', 'license_url', 'nib_document_url', 'police_record_url', 'profile_pic_url'
         ];
 
         const connection = await db.getConnection();

@@ -2,7 +2,7 @@ const db = require('../config/db');
 
 class SupportTicket {
     static async create(data) {
-        const { user_id, subject, description, category, priority } = data;
+        const { user_id = null, subject = null, description = null, category = null, priority = null } = data;
         const [result] = await db.execute(
             'INSERT INTO support_tickets (user_id, subject, description, category, priority, status) VALUES (?, ?, ?, ?, ?, ?)',
             [user_id, subject, description, category, priority, 'open']
@@ -28,7 +28,14 @@ class SupportTicket {
 
 class Event {
     static async create(data) {
-        const { name, description, location, event_date, client_id, manager_id } = data;
+        const {
+            name = null,
+            description = null,
+            location = null,
+            event_date = null,
+            client_id = null,
+            manager_id = null
+        } = data;
         const [result] = await db.execute(
             'INSERT INTO events (name, description, location, event_date, client_id, manager_id, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
             [name, description, location, event_date, client_id, manager_id, 'planned']
@@ -47,7 +54,15 @@ class Event {
     }
 
     static async update(id, data) {
-        const { name, description, location, event_date, client_id, manager_id, status } = data;
+        const {
+            name = null,
+            description = null,
+            location = null,
+            event_date = null,
+            client_id = null,
+            manager_id = null,
+            status = null
+        } = data;
         const [result] = await db.execute(
             'UPDATE events SET name = ?, description = ?, location = ?, event_date = ?, client_id = ?, manager_id = ?, status = ? WHERE id = ?',
             [name, description, location, event_date, client_id, manager_id, status, id]
@@ -63,10 +78,10 @@ class Event {
 
 class GuestRequest {
     static async create(data) {
-        const { client_id, request_details, priority } = data;
+        const { client_id = null, guest = null, requested_by = null, request_details = null, delivery_time = null, priority = null } = data;
         const [result] = await db.execute(
-            'INSERT INTO guest_requests (client_id, request_details, priority, status) VALUES (?, ?, ?, ?)',
-            [client_id, request_details, priority, 'pending']
+            'INSERT INTO guest_requests (client_id, guest, requested_by, request_details, delivery_time, priority, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [client_id, guest, requested_by, request_details, delivery_time, priority, 'pending']
         );
         return result.insertId;
     }
@@ -82,10 +97,10 @@ class GuestRequest {
     }
 
     static async update(id, data) {
-        const { request_details, priority, status } = data;
+        const { guest = null, requested_by = null, request_details = null, delivery_time = null, priority = null, status = null } = data;
         const [result] = await db.execute(
-            'UPDATE guest_requests SET request_details = ?, priority = ?, status = ? WHERE id = ?',
-            [request_details, priority, status, id]
+            'UPDATE guest_requests SET guest = ?, requested_by = ?, request_details = ?, delivery_time = ?, priority = ?, status = ? WHERE id = ?',
+            [guest, requested_by, request_details, delivery_time, priority, status, id]
         );
         return result.affectedRows > 0;
     }
@@ -98,7 +113,7 @@ class GuestRequest {
 
 class Audit {
     static async create(data) {
-        const { type, auditor, date, accuracy, status } = data;
+        const { type = null, auditor = null, date = null, accuracy = null, status = null } = data;
         const [result] = await db.execute(
             'INSERT INTO audits (type, auditor, date, accuracy, status) VALUES (?, ?, ?, ?, ?)',
             [type, auditor, date, accuracy, status]
@@ -117,7 +132,7 @@ class Audit {
     }
 
     static async update(id, data) {
-        const { type, auditor, date, accuracy, status } = data;
+        const { type = null, auditor = null, date = null, accuracy = null, status = null } = data;
         const [result] = await db.execute(
             'UPDATE audits SET type = ?, auditor = ?, date = ?, accuracy = ?, status = ? WHERE id = ?',
             [type, auditor, date, accuracy, status, id]

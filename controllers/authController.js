@@ -2,6 +2,7 @@ const User = require('../models/userModel');
 const Client = require('../models/clientModel');
 const Vendor = require('../models/vendorModel');
 const generateToken = require('../utils/generateToken');
+const db = require('../config/db');
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
@@ -52,6 +53,14 @@ const loginUser = async (req, res) => {
         const user = await User.findByEmail(email);
 
         if (user && (await User.comparePassword(password, user.password))) {
+            // Check if status is Pending
+            if (user.status === 'Pending') {
+                return res.status(403).json({ 
+                    success: false, 
+                    message: 'Your account is currently under audit by ZaneZion HQ. Please wait for approval.' 
+                });
+            }
+
             let details = {};
             if (user.role === 'Client') {
                 details = await Client.getByUserId(user.id);
@@ -93,7 +102,7 @@ const loginUser = async (req, res) => {
                     id: user.id,
                     role: user.role,
                     menuPermissions,
-                    token: generateToken(user.id, user.role, user.company_id || (user.role === 'Client' ? details.id : null))
+                    token: generateToken(user.id, user.role, user.company_id || (user.role === 'Client' ? (details?.id || null) : null))
                 }
             });
         } else {
@@ -232,8 +241,92 @@ const updateUserProfile = async (req, res) => {
     }
 };
 
+// @desc    Register a new staff member with documents
+// @route   POST /api/auth/staff-register
+// @access  Public
+const registerStaff = async (req, res) => {
+    try {
+        const userData = { ...req.body };
+        const files = req.files || {};
+
+        // Map file paths to userData - normalized paths for frontend use
+        if (files.passport) userData.passport_url = `/uploads/staff_docs/${files.passport[0].filename}`;
+        if (files.license) userData.license_url = `/uploads/staff_docs/${files.license[0].filename}`;
+        if (files.nib_doc) userData.nib_document_url = `/uploads/staff_docs/${files.nib_doc[0].filename}`;
+        if (files.police_record) userData.police_record_url = `/uploads/staff_docs/${files.police_record[0].filename}`;
+        if (files.profile_pic) userData.profile_pic_url = `/uploads/staff_docs/${files.profile_pic[0].filename}`;
+
+        // Force staff role and Pending status for the registration protocol
+        userData.role = 'Field Staff';
+        userData.status = 'Pending';
+
+        const userExists = await User.findByEmail(userData.email);
+        if (userExists) {
+            return res.status(400).json({ success: false, message: 'User already exists' });
+        }
+
+        const userId = await User.create(userData);
+
+        if (userId) {
+            res.status(201).json({
+                success: true,
+                message: 'Application submitted successfully. Status: Pending Approval.',
+                data: { id: userId, email: userData.email }
+            });
+        } else {
+            res.status(400).json({ success: false, message: 'Invalid registration data' });
+        }
+    } catch (error) {
+        console.error('Staff registration error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Get all pending staff applications
+// @route   GET /api/auth/staff-pending
+// @access  Private (Admin Only)
+const getPendingStaff = async (req, res) => {
+    try {
+        const [rows] = await db.execute(`
+            SELECT u.name, u.email, u.phone, u.status, sd.*, u.id as id 
+            FROM users u 
+            JOIN staff_details sd ON u.id = sd.user_id 
+            WHERE u.status = 'Pending' AND u.role NOT IN ('Client', 'Vendor')
+        `);
+        res.json({ success: true, data: rows });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Approve or Reject staff application
+// @route   PUT /api/auth/staff-review/:id
+// @access  Private (Admin Only)
+const reviewStaff = async (req, res) => {
+    try {
+        const { status } = req.body; // 'Active' or 'Inactive' (rejected)
+        const userId = req.params.id;
+
+        const success = await User.update(userId, { status });
+
+        if (success) {
+            res.json({ 
+                success: true, 
+                message: `Staff protocol ${status === 'Active' ? 'Activated' : 'Denied'} successfully.` 
+            });
+        } else {
+            res.status(400).json({ success: false, message: 'Failed to update protocol status.' });
+        }
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     registerUser,
+    registerStaff,
+    getPendingStaff,
+    reviewStaff,
     loginUser,
     getUserProfile,
     updateUserProfile,

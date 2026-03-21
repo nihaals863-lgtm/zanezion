@@ -2,7 +2,7 @@ const db = require('../config/db');
 
 class LeaveRequest {
     static async create(data) {
-        const { userId, type, start, end, reason } = data;
+        const { userId, type, start, end, reason = null } = data;
         const [result] = await db.query(
             'INSERT INTO leave_requests (user_id, type, start_date, end_date, reason, status) VALUES (?, ?, ?, ?, ?, ?)',
             [userId, type, start, end, reason, 'pending']
