@@ -1,0 +1,1 @@
+[{"email":"s@gmail.com","role":"Client"}]

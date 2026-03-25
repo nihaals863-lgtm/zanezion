@@ -1,7 +1,7 @@
 const db = require('../config/db');
 
 class Shift {
-    static async clockIn(userId, location) {
+    static async clockIn(userId, location = null) {
         const [result] = await db.execute(
             'INSERT INTO shifts (user_id, clock_in, status, location) VALUES (?, CURRENT_TIMESTAMP, "Active", ?)',
             [userId, location]

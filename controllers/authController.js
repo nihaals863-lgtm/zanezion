@@ -2,13 +2,14 @@ const User = require('../models/userModel');
 const Client = require('../models/clientModel');
 const Vendor = require('../models/vendorModel');
 const generateToken = require('../utils/generateToken');
+const db = require('../config/db');
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
 // @access  Public
 const registerUser = async (req, res) => {
     try {
-        const { 
+        const {
             name, email, phone, password, role,
             status, employment_status, vacation_balance,
             bank_name, account_number, routing_number, payment_method,
@@ -52,24 +53,37 @@ const loginUser = async (req, res) => {
         const user = await User.findByEmail(email);
 
         if (user && (await User.comparePassword(password, user.password))) {
+            // Check if status is Pending
+            if (user.status === 'Pending') {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Your account is currently under audit by ZaneZion HQ. Please wait for approval.'
+                });
+            }
+
             let details = {};
-            if (user.role === 'Client') {
+            const normalizedRole = user.role?.toLowerCase() || '';
+            if (normalizedRole === 'client' || normalizedRole === 'saas_client') {
                 details = await Client.getByUserId(user.id);
-            } else if (user.role === 'Vendor') {
+            } else if (normalizedRole === 'vendor') {
                 details = await Vendor.getByUserId(user.id);
             }
 
-            // Fetch menu permissions for the user's role
             let menuPermissions = [];
             try {
-                const Role = require('../models/roleModel');
-                const dbRole = await Role.getRoleByName(
-                    user.role.toLowerCase().replace(/\s+/g, '_')
-                );
-                if (dbRole) {
-                    const perms = await Role.getPermissions(dbRole.id);
+                // Fetch menu permissions for the role
+                const [roles] = await db.execute('SELECT id FROM roles WHERE LOWER(name) = ?', [normalizedRole]);
+                if (roles.length > 0) {
+                    const roleId = roles[0].id;
+                    const [perms] = await db.execute(`
+                        SELECT m.*, rmp.can_view, rmp.can_add, rmp.can_edit, rmp.can_delete 
+                        FROM menus m 
+                        JOIN role_menu_permissions rmp ON m.id = rmp.menu_id 
+                        WHERE rmp.role_id = ?
+                    `, [roleId]);
+                    
                     menuPermissions = perms
-                        .filter(p => p.can_view) // Only menus user can view
+                        .filter(p => p.can_view)
                         .map(p => ({
                             menu_id: p.id,
                             name: p.name,
@@ -90,10 +104,11 @@ const loginUser = async (req, res) => {
                 data: {
                     ...user,
                     ...details,
+                    clientId: details?.id,
                     id: user.id,
                     role: user.role,
                     menuPermissions,
-                    token: generateToken(user.id, user.role, user.company_id || (user.role === 'Client' ? details.id : null))
+                    token: generateToken(user.id, user.role, user.company_id || (['client', 'saas_client'].includes(normalizedRole) ? (details?.id || null) : null))
                 }
             });
         } else {
@@ -112,19 +127,20 @@ const getUserProfile = async (req, res) => {
         const user = await User.findById(req.user.id);
         if (user) {
             let details = {};
-            if (user.role === 'Client') {
+            const normalizedRole = user.role?.toLowerCase() || '';
+            if (normalizedRole === 'client' || normalizedRole === 'saas_client') {
                 details = await Client.getByUserId(user.id);
-            } else if (user.role === 'Vendor') {
+            } else if (normalizedRole === 'vendor') {
                 details = await Vendor.getByUserId(user.id);
             }
 
-            res.json({ 
-                success: true, 
+            res.json({
+                success: true,
                 data: {
                     ...user,
                     ...details,
                     id: user.id
-                } 
+                }
             });
         } else {
             res.status(404).json({ success: false, message: 'User not found' });
@@ -153,7 +169,7 @@ const forgotPassword = async (req, res) => {
         // Store OTP in database (using a simple update to User for now or a separate table if available)
         // For now, let's just log it and return it in the response since SMTP is not yet configured.
         // In a real scenario, this would be sent via email.
-        
+
         // Since we don't have the table yet (previous script failed), 
         // I'll add a temporary console log for the user to see it.
         console.log(`[ALERT] OTP for ${email}: ${otp}`);
@@ -162,8 +178,8 @@ const forgotPassword = async (req, res) => {
         // but for testing, let's assume it works or use a simple column in users.
         // For this task, I will return it so the user can test the frontend.
 
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
             message: 'OTP generated successfully. (Check console or response for dummy testing)',
             data: { otp } // TEMPORARY: Return OTP for testing without SMTP
         });
@@ -178,7 +194,7 @@ const forgotPassword = async (req, res) => {
 const resetPassword = async (req, res) => {
     try {
         const { email, otp, newPassword } = req.body;
-        
+
         // Simple verification for now (since we don't have the table persist yet)
         // In production, we'd verify against the password_reset_tokens table.
         // For currently enabling the user to test, we'll accept any 6-digit OTP for now?
@@ -190,7 +206,7 @@ const resetPassword = async (req, res) => {
         }
 
         const success = await User.update(user.id, { password: newPassword });
-        
+
         if (success) {
             res.json({ success: true, message: 'Password reset successfully' });
         } else {
@@ -208,7 +224,7 @@ const updateUserProfile = async (req, res) => {
     try {
         const { name, email, phone, birthday, password } = req.body;
         const user = await User.findById(req.user.id);
-        
+
         if (!user) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
@@ -221,7 +237,7 @@ const updateUserProfile = async (req, res) => {
         if (password) updates.password = password; // User.update should handle hashing
 
         const success = await User.update(user.id, updates);
-        
+
         if (success) {
             res.json({ success: true, message: 'Profile updated successfully' });
         } else {
@@ -232,8 +248,112 @@ const updateUserProfile = async (req, res) => {
     }
 };
 
+// @desc    Register a new staff member with documents
+// @route   POST /api/auth/staff-register
+// @access  Public
+const registerStaff = async (req, res) => {
+    try {
+        const userData = { ...req.body };
+        const files = req.files || {};
+
+        // Map file paths to userData - normalized paths for frontend use
+        if (files.passport) userData.passport_url = `/uploads/staff_docs/${files.passport[0].filename}`;
+        if (files.license) userData.license_url = `/uploads/staff_docs/${files.license[0].filename}`;
+        if (files.nib_doc) userData.nib_document_url = `/uploads/staff_docs/${files.nib_doc[0].filename}`;
+        if (files.police_record) userData.police_record_url = `/uploads/staff_docs/${files.police_record[0].filename}`;
+        if (files.profile_pic) userData.profile_pic_url = `/uploads/staff_docs/${files.profile_pic[0].filename}`;
+
+        // Force staff role and Pending status for the registration protocol
+        userData.role = 'Field Staff';
+        userData.status = 'Pending';
+
+        const userExists = await User.findByEmail(userData.email);
+        if (userExists) {
+            return res.status(400).json({ success: false, message: 'User already exists' });
+        }
+
+        const userId = await User.create(userData);
+
+        if (userId) {
+            res.status(201).json({
+                success: true,
+                message: 'Application submitted successfully. Status: Pending Approval.',
+                data: { id: userId, email: userData.email }
+            });
+        } else {
+            res.status(400).json({ success: false, message: 'Invalid registration data' });
+        }
+    } catch (error) {
+        console.error('Staff registration error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Get all pending staff applications
+// @route   GET /api/auth/staff-pending
+// @access  Private (Admin Only)
+const getPendingStaff = async (req, res) => {
+    try {
+        const companyId = req.user.role === 'super_admin' ? null : req.user.companyId;
+        let query = `
+            SELECT u.name, u.email, u.phone, u.status, sd.*, u.id as id 
+            FROM users u 
+            JOIN staff_details sd ON u.id = sd.user_id 
+            WHERE u.status = 'Pending' AND u.role NOT IN ('Client', 'Vendor')
+        `;
+        const params = [];
+
+        if (companyId) {
+            query += ' AND u.company_id = ?';
+            params.push(companyId);
+        }
+
+        const [rows] = await db.execute(query, params);
+        res.json({ success: true, data: rows });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Approve or Reject staff application
+// @route   PUT /api/auth/staff-review/:id
+// @access  Private (Admin Only)
+const reviewStaff = async (req, res) => {
+    try {
+        const { status } = req.body; // 'Active' or 'Inactive' (rejected)
+        const userId = req.params.id;
+
+        const success = await User.update(userId, { status });
+
+        if (success) {
+            res.json({
+                success: true,
+                message: `Staff protocol ${status === 'Active' ? 'Activated' : 'Denied'} successfully.`
+            });
+        } else {
+            res.status(400).json({ success: false, message: 'Failed to update protocol status.' });
+        }
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     registerUser,
+    registerStaff,
+    getPendingStaff,
+    reviewStaff,
+    loginUser,
+    getUserProfile,
+    updateUserProfile,
+    forgotPassword,
+    resetPassword
+};
+module.exports = {
+    registerUser,
+    registerStaff,
+    getPendingStaff,
+    reviewStaff,
     loginUser,
     getUserProfile,
     updateUserProfile,

@@ -126,7 +126,7 @@ class Vendor {
             }
 
             const [result] = await connection.execute('UPDATE vendors SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [id]);
-            
+
             await connection.commit();
             return result.affectedRows > 0;
         } catch (error) {

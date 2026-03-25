@@ -1,0 +1,1 @@
+["id","company_id","mission_id","driver_id","status","delivery_date","customs_clearance","client_confirmed","created_at","updated_at"]

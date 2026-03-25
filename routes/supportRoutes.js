@@ -11,10 +11,10 @@ const { authorize } = require('../middleware/roleMiddleware');
 
 // Ticket routes
 router.route('/tickets')
-    .get(protect, authorize('super_admin', 'operations'), getTickets)
+    .get(protect, authorize('super_admin', 'operations', 'client', 'saas_client'), getTickets)
     .post(protect, createTicket);
 
-router.route('/tickets/:id/status').patch(protect, authorize('super_admin', 'operations'), updateTicketStatus);
+router.route('/tickets/:id/status').patch(protect, authorize('super_admin', 'operations', 'client', 'saas_client'), updateTicketStatus);
 
 // Concierge routes
 router.route('/events')

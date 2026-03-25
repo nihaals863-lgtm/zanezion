@@ -7,7 +7,7 @@ const convertOrderToMission = async (req, res) => {
     try {
         const orderId = req.params.orderId;
         const missionData = req.body;
-        
+
         const missionId = await Mission.createFromOrder(orderId, missionData);
         res.status(201).json({ success: true, message: 'Order successfully converted to Mission', missionId });
     } catch (error) {
@@ -21,7 +21,7 @@ const convertOrderToMission = async (req, res) => {
 const getMissions = async (req, res) => {
     try {
         let missions = await Mission.getAll();
-        
+
         // Role-based filtering
         const role = req.user.role.toLowerCase().replace(/\s/g, '');
         const userId = req.user.id;
@@ -35,7 +35,7 @@ const getMissions = async (req, res) => {
         } else if (role === 'fieldstaff') {
             missions = missions.filter(m => m.assigned_driver === userId);
         }
-        
+
         res.json({ success: true, count: missions.length, data: missions });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -62,7 +62,7 @@ const assignMissionDriver = async (req, res) => {
     try {
         const { driverId, vehicleId } = req.body;
         const success = await Mission.assignDriver(req.params.id, driverId, vehicleId);
-        
+
         if (success) {
             res.json({ success: true, message: 'Driver assigned successfully' });
         } else {
@@ -80,7 +80,7 @@ const updateMissionStatus = async (req, res) => {
     try {
         const { status } = req.body;
         const success = await Mission.updateStatus(req.params.id, status);
-        
+
         if (success) {
             res.json({ success: true, message: 'Mission status updated' });
         } else {

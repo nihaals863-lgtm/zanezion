@@ -3,7 +3,7 @@ const db = require('../config/db');
 class InventoryItem {
     static async create(data) {
         const { name, sku, description, category, unit, quantity, threshold, warehouse_id, vendor_id, price, inventory_type, client_id } = data;
-        
+
         const params = [
             name || null,
             sku || null,
@@ -16,25 +16,39 @@ class InventoryItem {
             vendor_id || null,
             price || 0,
             inventory_type || 'Marketplace',
-            client_id || null
+            client_id || null,
+            data.company_id || null
         ];
-
+ 
         const [result] = await db.execute(
-            'INSERT INTO inventory_items (name, sku, description, category, unit, quantity, threshold, warehouse_id, vendor_id, price, inventory_type, client_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO inventory_items (name, sku, description, category, unit, quantity, threshold, warehouse_id, vendor_id, price, inventory_type, client_id, company_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             params
         );
         return result.insertId;
     }
 
-    static async getAll() {
-        const [rows] = await db.execute(`
+    static async getAll(companyId) {
+        let query = `
             SELECT i.*, w.name as warehouse_name, v.name as vendor_name, c.business_name as client_name
             FROM inventory_items i
             LEFT JOIN warehouses w ON i.warehouse_id = w.id
             LEFT JOIN vendors v ON i.vendor_id = v.id
             LEFT JOIN clients c ON i.client_id = c.id
             WHERE i.deleted_at IS NULL
-        `);
+        `;
+        const params = [];
+
+        if (companyId !== undefined) {
+             if (companyId === null) {
+                 // Super Admin: return ALL inventory (Global HQ view)
+             } else {
+                 // Tenant: their stock + Marketplace
+                 query += ' AND (i.inventory_type = "Marketplace" OR i.company_id = ?)';
+                 params.push(companyId);
+             }
+        }
+
+        const [rows] = await db.execute(query, params);
         return rows.map(i => ({
             ...i,
             quantity: Number(i.quantity || 0),

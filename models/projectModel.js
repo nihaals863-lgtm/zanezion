@@ -1,16 +1,23 @@
 const db = require('../config/db');
 
 class Project {
-    static async getAll() {
-        const [rows] = await db.query('SELECT * FROM projects ORDER BY created_at DESC');
+    static async getAll(company_id = null) {
+        let query = 'SELECT * FROM projects';
+        const params = [];
+        if (company_id !== undefined && company_id !== null) {
+            query += ' WHERE company_id = ?';
+            params.push(company_id);
+        }
+        query += ' ORDER BY created_at DESC';
+        const [rows] = await db.query(query, params);
         return rows;
     }
 
     static async create(data) {
-        const { name, client, order_id, manager_id, start_date, end_date, status, description } = data;
+        const { name, client, order_id, manager_id, start_date, end_date, status, description, company_id } = data;
         const [result] = await db.query(
-            'INSERT INTO projects (name, order_id, manager_id, start_date, end_date, status, description) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [name, order_id, manager_id, start_date, end_date, status || 'planned', description]
+            'INSERT INTO projects (name, order_id, manager_id, start_date, end_date, status, description, company_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [name, order_id, manager_id, start_date, end_date, status || 'planned', description, company_id || null]
         );
         return result.insertId;
     }

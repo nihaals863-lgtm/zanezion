@@ -45,7 +45,7 @@ const getPOById = async (req, res) => {
 const updatePO = async (req, res) => {
     try {
         const updateData = { ...req.body };
-        
+
         // Authorization Workflow logic
         if (updateData.approvalStatus && updateData.approvalStatus !== 'Pending') {
             if (req.user.role !== 'Super Admin' && req.user.role !== 'super_admin') {
@@ -53,10 +53,10 @@ const updatePO = async (req, res) => {
             }
             updateData.approved_by_id = req.user.id;
             updateData.approval_date = new Date().toISOString().slice(0, 19).replace('T', ' ');
-            
+
             // Auto update overall status if approved
             if (updateData.approvalStatus === 'Approved' && !updateData.status) {
-                updateData.status = 'Approved'; 
+                updateData.status = 'Approved';
             }
         }
 
@@ -82,8 +82,9 @@ const receiveGoods = async (req, res) => {
 // Purchase Requests
 const createRequest = async (req, res) => {
     try {
-        const id = await PurchaseRequest.create(req.body);
-        const newReq = await PurchaseRequest.getById(id);
+        const payload = { ...req.body, companyId: req.user.companyId };
+        const id = await PurchaseRequest.create(payload);
+        const newReq = await PurchaseRequest.getById(id, req.user.companyId);
         res.status(201).json({ success: true, data: newReq });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -92,7 +93,8 @@ const createRequest = async (req, res) => {
 
 const getRequests = async (req, res) => {
     try {
-        const requests = await PurchaseRequest.getAll();
+        const companyId = req.user.role === 'super_admin' ? null : req.user.companyId;
+        const requests = await PurchaseRequest.getAll(companyId);
         res.json({ success: true, data: requests });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -111,8 +113,9 @@ const updateRequest = async (req, res) => {
 // Quotes
 const createQuote = async (req, res) => {
     try {
-        const id = await Quote.create(req.body);
-        const newQuote = await Quote.getById(id);
+        const payload = { ...req.body, companyId: req.user.companyId };
+        const id = await Quote.create(payload);
+        const newQuote = await Quote.getById(id, req.user.companyId);
         res.status(201).json({ success: true, data: newQuote });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -121,7 +124,8 @@ const createQuote = async (req, res) => {
 
 const getQuotes = async (req, res) => {
     try {
-        const quotes = await Quote.getAll();
+        const companyId = req.user.role === 'super_admin' ? null : req.user.companyId;
+        const quotes = await Quote.getAll(companyId);
         res.json({ success: true, data: quotes });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

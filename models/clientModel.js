@@ -3,11 +3,11 @@ const bcrypt = require('bcryptjs');
 
 class Client {
     static async create(clientData) {
-        const { 
-            name, email, phone, password, address, location, source, 
-            client_type, plan, billing_cycle, payment_method, 
+        const {
+            name, email, phone, password, address, location, source,
+            client_type, plan, billing_cycle, payment_method,
             contact_person, business_name, logo_url, primary_color, tagline,
-            status 
+            status
         } = clientData;
 
         const salt = await bcrypt.genSalt(10);
@@ -18,9 +18,10 @@ class Client {
             await connection.beginTransaction();
 
             // 1. Create the user (Core Auth)
+            const roleName = client_type === 'SaaS' ? 'saas_client' : 'Client';
             const [userResult] = await connection.execute(
                 `INSERT INTO users (name, email, phone, password, role, status) VALUES (?, ?, ?, ?, ?, ?)`,
-                [name, email, phone || null, hashedPassword, 'Client', 'Active']
+                [name, email, phone || null, hashedPassword, roleName, 'Active']
             );
             const userId = userResult.insertId;
 
@@ -30,15 +31,20 @@ class Client {
                     user_id, address, location, source, 
                     client_type, plan, billing_cycle, payment_method, 
                     contact_person, business_name, logo_url, primary_color, tagline,
-                    status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    status, company_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
                     userId, address || null, location || null, source || 'Manual',
                     client_type || 'Personal', plan || 'Starter', billing_cycle || 'Monthly', payment_method || null,
                     contact_person || null, business_name || null, logo_url || null, primary_color || null, tagline || null,
-                    status || 'active'
+                    status || 'active', clientData.company_id || null
                 ]
             );
+
+            // 3. Link the user to the company if it's the first user of the company
+            if (client_type === 'SaaS') {
+                await connection.execute('UPDATE users SET company_id = ? WHERE id = ?', [clientResult.insertId, userId]);
+            }
 
             await connection.commit();
             return clientResult.insertId;
@@ -50,14 +56,28 @@ class Client {
         }
     }
 
-    static async getAll() {
-        const [rows] = await db.execute(`
+    static async getAll(companyId) {
+        let query = `
             SELECT c.*, u.name, u.email, u.phone, u.role, u.status as auth_status,
             (SELECT COUNT(*) FROM orders o WHERE o.company_id = c.id AND LOWER(o.status) NOT IN ('completed', 'cancelled', 'project_converted')) AS orders
             FROM clients c 
             JOIN users u ON c.user_id = u.id
             WHERE c.deleted_at IS NULL
-        `);
+        `;
+        const params = [];
+
+        if (companyId !== undefined) {
+            if (companyId === null) {
+                // Super Admin: return ALL clients (Global HQ view)
+                // If they specifically want ONLY SaaS clients, we should add a different method or parameter
+            } else {
+                // Tenant view: Return their specifically managed end-users/customers
+                query += ' AND (c.company_id = ? OR c.id = ?)';
+                params.push(companyId, companyId);
+            }
+        }
+
+        const [rows] = await db.execute(query, params);
         return rows;
     }
 
@@ -86,8 +106,8 @@ class Client {
     static async update(id, updateData) {
         const userFields = ['name', 'email', 'phone', 'password', 'status'];
         const clientFields = [
-            'address', 'location', 'source', 'client_type', 'plan', 'billing_cycle', 
-            'payment_method', 'contact_person', 'business_name', 'logo_url', 
+            'address', 'location', 'source', 'client_type', 'plan', 'billing_cycle',
+            'payment_method', 'contact_person', 'business_name', 'logo_url',
             'primary_color', 'tagline', 'status'
         ];
 

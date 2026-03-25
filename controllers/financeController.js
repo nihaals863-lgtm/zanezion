@@ -2,11 +2,11 @@ const { Invoice, Transaction, Payroll } = require('../models/financeModel');
 
 const getInvoices = async (req, res) => {
     try {
-        let invoices = await Invoice.getAll();
+        const companyId = req.user.role === 'super_admin' ? null : req.user.companyId;
+        let invoices = await Invoice.getAll(companyId);
         
-        // Role-based filtering
-        const role = req.user.role.toLowerCase().replace(/\s/g, '');
-        if (role === 'client') {
+        // Additional filter for end-user clients
+        if (req.user.role.toLowerCase().replace(/\s/g, '') === 'client' && companyId !== null) {
             const Client = require('../models/clientModel');
             const clientDetails = await Client.getByUserId(req.user.id);
             if (clientDetails) {
@@ -15,7 +15,6 @@ const getInvoices = async (req, res) => {
                 invoices = [];
             }
         }
-        
         res.json({ success: true, count: invoices.length, data: invoices });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -24,8 +23,9 @@ const getInvoices = async (req, res) => {
 
 const createInvoice = async (req, res) => {
     try {
-        const invoiceId = await Invoice.create(req.body);
-        const newInvoice = await Invoice.getById(invoiceId);
+        const payload = { ...req.body, company_id: req.user.companyId };
+        const invoiceId = await Invoice.create(payload);
+        const newInvoice = await Invoice.getById(invoiceId, req.user.companyId);
         res.status(201).json({ success: true, data: newInvoice });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -43,8 +43,9 @@ const payInvoice = async (req, res) => {
 
 const createPayrollRecord = async (req, res) => {
     try {
-        const payrollId = await Payroll.create(req.body);
-        res.status(201).json({ success: true, data: { id: payrollId, ...req.body } });
+        const payload = { ...req.body, company_id: req.user.companyId };
+        const payrollId = await Payroll.create(payload);
+        res.status(201).json({ success: true, data: { id: payrollId, ...payload } });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -52,7 +53,8 @@ const createPayrollRecord = async (req, res) => {
 
 const getAllPayroll = async (req, res) => {
     try {
-        const payrolls = await Payroll.getAll();
+        const companyId = req.user.role === 'super_admin' ? null : req.user.companyId;
+        const payrolls = await Payroll.getAll(companyId);
         res.json({ success: true, count: payrolls.length, data: payrolls });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

@@ -1,0 +1,41 @@
+--- Table: projects ---
+id | int(11) | NO | PRI
+company_id | int(11) | YES | 
+order_id | int(11) | YES | MUL
+	tenant_id | int(11) | YES | MUL
+name | varchar(255) | NO | 
+description | text | YES | 
+manager_id | int(11) | YES | MUL
+start_date | date | YES | 
+end_date | date | YES | 
+location | varchar(255) | YES | 
+status | enum('planned','in_progress','on_hold','completed') | YES | 
+created_at | timestamp | YES | 
+updated_at | timestamp | YES | 
+deleted_at | timestamp | YES | 
+
+--- Table: deliveries ---
+id | int(11) | NO | PRI
+project_id | int(11) | YES | MUL
+order_id | int(11) | YES | MUL
+vehicle_id | int(11) | YES | MUL
+driver_id | int(11) | YES | MUL
+route_id | int(11) | YES | MUL
+mission_type | enum('Logistics','Chauffeur') | YES | 
+passenger_info | longtext | YES | 
+package_details | longtext | YES | 
+pod | longtext | YES | 
+destination_type | enum('Domestic','International','Private Island','Deep Sea') | YES | 
+customs_clearance | tinyint(1) | YES | 
+client_confirmed | tinyint(1) | YES | 
+client_confirmed_at | timestamp | YES | 
+client_signature | varchar(255) | YES | 
+route | varchar(100) | YES | 
+custom_route | text | YES | 
+status | varchar(50) | YES | 
+proof_of_delivery_signature | text | YES | 
+proof_of_delivery_photo | text | YES | 
+delivery_date | timestamp | YES | 
+created_at | timestamp | YES | 
+updated_at | timestamp | YES | 
+

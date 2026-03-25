@@ -1,0 +1,39 @@
+Tables Found: 38
+- access_plans: id, name, tier, price, period, yearly_price, description, features, commitment, created_at, updated_at
+- audit_logs: id, company_id, user_id, action, module, resource_id, old_value, new_value, ip_address, created_at
+- audits: id, company_id, type, auditor, date, accuracy, status, created_at, updated_at
+- clients: id, user_id, address, location, source, client_type, plan, billing_cycle, payment_method, contact_person, business_name, logo_url, primary_color, tagline, status, created_at, updated_at, deleted_at
+- deliveries: id, company_id, mission_id, driver_id, status, delivery_date, customs_clearance, client_confirmed, created_at, updated_at
+- delivery_pricing: id, company_id, min_distance, max_distance, price, created_at, updated_at
+- events: id, company_id, name, description, location, event_date, client_id, manager_id, status, created_at
+- guest_requests: id, company_id, client_id, request_details, status, priority, created_at, updated_at
+- inventory_items: id, name, sku, description, category, unit, quantity, threshold, warehouse_id, vendor_id, price, inventory_type, client_id, company_id, status, created_at, updated_at, deleted_at
+- invoices: id, company_id, order_id, mission_id, client_id, amount, due_date, status, created_at, updated_at
+- leave_requests: id, user_id, type, start_date, end_date, reason, status, created_at, updated_at
+- luxury_items: id, item_name, owner_name, vault_location, estimated_value, status, notes, created_at, updated_at
+- menus: id, name, path, icon, parent_id, sort_order, created_at
+- mission_items: id, mission_id, item_name, qty, weight, length, width, height, created_at
+- missions: id, order_id, project_id, mission_type, event_date, status, assigned_driver, vehicle_id, route_id, destination_type, notes, created_at, updated_at
+- order_items: id, order_id, item_id, name, quantity, unit_price, total_price
+- orders: id, client_id, company_id, vendor_id, type, status, total_amount, order_date, due_date, notes, created_at, updated_at, deleted_at
+- payments: id, invoice_id, amount, payment_method, transaction_id, payment_date
+- payroll: id, user_id, base_salary, bonus, nib_deduction, medical_deduction, pension_deduction, savings_deduction, birthday_club, net_amount, amount, payment_date, status, method, created_at
+- projects: id, order_id, company_id, name, description, manager_id, start_date, end_date, status, created_at, updated_at, deleted_at
+- proof_of_delivery: id, mission_id, photo, signature, gps_coordinates, timestamp
+- purchase_order_items: id, po_id, name, ordered_qty, received_qty, price, category
+- purchase_orders: id, vendor_id, company_id, vendor_name, total, status, approval_status, approved_by_id, approval_date, date, created_at, updated_at
+- purchase_requests: id, item_id, requested_qty, requester_id, requester, items, priority, department, client_id, company_id, status, approval_status, approved_by_id, approval_date, created_at, updated_at
+- quotes: id, request_id, vendor_id, items, total, lead_time, validity, status, created_at
+- role_menu_permissions: id, role_id, menu_id, can_view, can_add, can_edit, can_delete
+- roles: id, name, description, created_at
+- routes: id, name, start_location, end_location, distance_km, estimated_time, created_at
+- shifts: id, user_id, clock_in, clock_out, duration_hours, status, location, created_at
+- staff_assignments: id, assignee_id, task_name, description, due_date, priority, status, created_at, updated_at
+- staff_details: id, user_id, employment_status, is_salaried, vacation_balance, bank_name, account_number, routing_number, payment_method, nib_number, birthday, has_passport, has_license, has_nib_doc, has_police_record, has_resume, has_profile_pic, has_certs, is_available
+- stock_movements: id, item_id, quantity, type, reference_type, reference_id, user_id, notes, created_at
+- subscription_requests: id, client_name, plan, contact, email, country, requirements, property_type, throughput, status, request_date, created_at, updated_at
+- support_tickets: id, company_id, user_id, subject, description, category, priority, status, created_at, updated_at
+- users: id, name, email, phone, password, company_id, role, status, avatar_url, created_at, updated_at, deleted_at
+- vehicles: id, plate_number, model, type, company_id, fuel_level, vehicle_type, status, capacity, insurance_policy, registration_expiry, inspection_date, diagnostic_status, created_at, updated_at
+- vendors: id, user_id, name, contact_name, email, phone, company_id, address, category, status, created_at, updated_at, deleted_at
+- warehouses: id, name, location, manager_id, company_id, status, created_at, updated_at

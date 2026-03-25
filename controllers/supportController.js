@@ -2,7 +2,9 @@ const { SupportTicket, Event, GuestRequest, Audit } = require('../models/support
 
 const getTickets = async (req, res) => {
     try {
-        const tickets = await SupportTicket.getAll();
+        const userRole = req.user.role?.toLowerCase() || '';
+        const userId = (userRole === 'super_admin' || userRole === 'operations') ? null : req.user.id;
+        const tickets = await SupportTicket.getAll(userId);
         res.json({ success: true, data: tickets });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -32,7 +34,8 @@ const updateTicketStatus = async (req, res) => {
 
 const getEvents = async (req, res) => {
     try {
-        const events = await Event.getAll();
+        const companyId = req.user.role === 'super_admin' ? null : req.user.companyId;
+        const events = await Event.getAll(companyId);
         res.json({ success: true, data: events });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -41,7 +44,8 @@ const getEvents = async (req, res) => {
 
 const getGuestRequests = async (req, res) => {
     try {
-        const requests = await GuestRequest.getAll();
+        const companyId = req.user.role === 'super_admin' ? null : req.user.companyId;
+        const requests = await GuestRequest.getAll(companyId);
         res.json({ success: true, data: requests });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

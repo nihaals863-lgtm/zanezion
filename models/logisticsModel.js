@@ -1,15 +1,22 @@
 const db = require('../config/db');
 
 class Vehicle {
-    static async getAll() {
-        const [rows] = await db.execute('SELECT * FROM vehicles');
+    static async getAll(company_id = null) {
+        let query = 'SELECT * FROM vehicles';
+        const params = [];
+        if (company_id !== undefined && company_id !== null) {
+            query += ' WHERE company_id = ?';
+            params.push(company_id);
+        }
+        const [rows] = await db.execute(query, params);
         return rows;
     }
 
     static async create(data) {
-        const { plate_number, model, type, fuel_level, vehicle_type, capacity, insurance_policy, registration_expiry, inspection_date, diagnostic_status } = data;
+        const { plate_number, model, type, fuel_level, vehicle_type, capacity, insurance_policy, registration_expiry, inspection_date, diagnostic_status, companyId, company_id } = data;
+        const cid = companyId || company_id || null;
         const [result] = await db.execute(
-            'INSERT INTO vehicles (plate_number, model, type, fuel_level, vehicle_type, status, capacity, insurance_policy, registration_expiry, inspection_date, diagnostic_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', 
+            'INSERT INTO vehicles (plate_number, model, type, fuel_level, vehicle_type, status, capacity, insurance_policy, registration_expiry, inspection_date, diagnostic_status, company_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', 
             [
                 plate_number, 
                 model, 
@@ -21,7 +28,8 @@ class Vehicle {
                 insurance_policy || null, 
                 registration_expiry || null, 
                 inspection_date || null, 
-                diagnostic_status || 'Healthy'
+                diagnostic_status || 'Healthy',
+                cid
             ]
         );
         return result.insertId;
@@ -117,13 +125,25 @@ class Delivery {
         }
     }
 
-    static async getAll() {
-        const [rows] = await db.execute('SELECT d.*, v.plate_number, u.name as driver_name, r.name as route_name FROM deliveries d LEFT JOIN vehicles v ON d.vehicle_id = v.id LEFT JOIN users u ON d.driver_id = u.id LEFT JOIN routes r ON d.route_id = r.id');
+    static async getAll(company_id = null) {
+        let query = 'SELECT d.*, v.plate_number, u.name as driver_name, r.name as route_name FROM deliveries d LEFT JOIN vehicles v ON d.vehicle_id = v.id LEFT JOIN users u ON d.driver_id = u.id LEFT JOIN routes r ON d.route_id = r.id';
+        const params = [];
+        if (company_id !== undefined && company_id !== null) {
+            query = 'SELECT d.*, v.plate_number, u.name as driver_name, r.name as route_name FROM deliveries d JOIN orders o ON d.order_id = o.id LEFT JOIN vehicles v ON d.vehicle_id = v.id LEFT JOIN users u ON d.driver_id = u.id LEFT JOIN routes r ON d.route_id = r.id WHERE o.company_id = ?';
+            params.push(company_id);
+        }
+        const [rows] = await db.execute(query, params);
         return rows;
     }
 
-    static async getById(id) {
-        const [rows] = await db.execute('SELECT d.*, v.plate_number, u.name as driver_name, r.name as route_name FROM deliveries d LEFT JOIN vehicles v ON d.vehicle_id = v.id LEFT JOIN users u ON d.driver_id = u.id LEFT JOIN routes r ON d.route_id = r.id WHERE d.id = ?', [id]);
+    static async getById(id, company_id = null) {
+        let query = 'SELECT d.*, v.plate_number, u.name as driver_name, r.name as route_name FROM deliveries d LEFT JOIN vehicles v ON d.vehicle_id = v.id LEFT JOIN users u ON d.driver_id = u.id LEFT JOIN routes r ON d.route_id = r.id WHERE d.id = ?';
+        const params = [id];
+        if (company_id !== undefined && company_id !== null) {
+            query = 'SELECT d.*, v.plate_number, u.name as driver_name, r.name as route_name FROM deliveries d JOIN orders o ON d.order_id = o.id LEFT JOIN vehicles v ON d.vehicle_id = v.id LEFT JOIN users u ON d.driver_id = u.id LEFT JOIN routes r ON d.route_id = r.id WHERE d.id = ? AND o.company_id = ?';
+            params.push(company_id);
+        }
+        const [rows] = await db.execute(query, params);
         return rows[0];
     }
 
@@ -148,7 +168,8 @@ class Delivery {
 
 class Route {
     static async getAll() {
-        const [rows] = await db.execute('SELECT * FROM routes');
+        let query = 'SELECT * FROM routes';
+        const [rows] = await db.execute(query);
         return rows;
     }
 

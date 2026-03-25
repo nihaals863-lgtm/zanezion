@@ -2,7 +2,8 @@ const { Vehicle, Delivery, Route, DeliveryPricing } = require('../models/logisti
 
 const getVehicles = async (req, res) => {
     try {
-        const vehicles = await Vehicle.getAll();
+        const companyId = req.user.role === 'super_admin' ? null : req.user.companyId;
+        const vehicles = await Vehicle.getAll(companyId);
         res.json({ success: true, data: vehicles });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -11,8 +12,9 @@ const getVehicles = async (req, res) => {
 
 const createVehicle = async (req, res) => {
     try {
-        const vehicleId = await Vehicle.create(req.body);
-        res.status(201).json({ success: true, data: { id: vehicleId, ...req.body } });
+        const payload = { ...req.body, companyId: req.user.companyId };
+        const vehicleId = await Vehicle.create(payload);
+        res.status(201).json({ success: true, data: { id: vehicleId, ...payload } });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -46,7 +48,8 @@ const deleteVehicle = async (req, res) => {
 
 const getDeliveries = async (req, res) => {
     try {
-        const deliveries = await Delivery.getAll();
+        const companyId = req.user.role === 'super_admin' ? null : req.user.companyId;
+        const deliveries = await Delivery.getAll(companyId);
         res.json({ success: true, data: deliveries });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -55,8 +58,9 @@ const getDeliveries = async (req, res) => {
 
 const createDelivery = async (req, res) => {
     try {
-        const deliveryId = await Delivery.create(req.body);
-        const newDelivery = await Delivery.getById(deliveryId);
+        const payload = { ...req.body, company_id: req.user.companyId };
+        const deliveryId = await Delivery.create(payload);
+        const newDelivery = await Delivery.getById(deliveryId, req.user.companyId);
         res.status(201).json({ success: true, data: newDelivery });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -85,7 +89,8 @@ const updateDeliveryStatus = async (req, res) => {
 
 const getRoutes = async (req, res) => {
     try {
-        const routes = await Route.getAll();
+        const companyId = req.user.role === 'super_admin' ? null : req.user.companyId;
+        const routes = await Route.getAll(companyId);
         res.json({ success: true, data: routes });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -94,8 +99,9 @@ const getRoutes = async (req, res) => {
 
 const createRoute = async (req, res) => {
     try {
-        const routeId = await Route.create(req.body);
-        res.status(201).json({ success: true, data: { id: routeId, ...req.body } });
+        const payload = { ...req.body, companyId: req.user.companyId };
+        const routeId = await Route.create(payload);
+        res.status(201).json({ success: true, data: { id: routeId, ...payload } });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

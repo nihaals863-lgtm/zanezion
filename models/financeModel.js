@@ -10,8 +10,14 @@ class Invoice {
         return result.insertId;
     }
 
-    static async getAll() {
-        const [rows] = await db.execute('SELECT i.*, c.business_name as client_name, o.id as order_id FROM invoices i JOIN clients c ON i.client_id = c.id JOIN orders o ON i.order_id = o.id');
+    static async getAll(companyId) {
+        let query = 'SELECT i.*, c.business_name as client_name, o.id as order_id FROM invoices i JOIN clients c ON i.client_id = c.id JOIN orders o ON i.order_id = o.id';
+        const params = [];
+        if (companyId) {
+            query += ' WHERE c.id = ? OR o.company_id = ?';
+            params.push(companyId, companyId);
+        }
+        const [rows] = await db.execute(query, params);
         return rows;
     }
 
@@ -94,13 +100,19 @@ class Payroll {
         return rows;
     }
 
-    static async getAll() {
-        const [rows] = await db.execute(`
+    static async getAll(companyId) {
+        let query = `
             SELECT p.*, u.name as user_name 
             FROM payroll p 
             JOIN users u ON p.user_id = u.id 
-            ORDER BY p.created_at DESC
-        `);
+        `;
+        const params = [];
+        if (companyId) {
+            query += ' WHERE u.company_id = ?';
+            params.push(companyId);
+        }
+        query += ' ORDER BY p.created_at DESC';
+        const [rows] = await db.execute(query, params);
         return rows;
     }
 

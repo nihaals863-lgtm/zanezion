@@ -5,22 +5,17 @@ const { Order, Project } = require('../models/orderModel');
 // @access  Private
 const getOrders = async (req, res) => {
     try {
-        let orders = await Order.getAll();
-        
-        // Role-based filtering
+        // Multi-tenant filtering: Only super_admin sees everything (if companyId is null)
+        const companyId = req.user.role === 'super_admin' ? null : req.user.companyId;
+        let orders = await Order.getAll(companyId);
+
+        // Additional filtering for Client role (optional if tenant_id is enough)
         const role = req.user.role.toLowerCase().replace(/\s/g, '');
-        if (role === 'client') {
-            // Check if user is linked to a client record
-            const Client = require('../models/clientModel');
-            const clientDetails = await Client.getByUserId(req.user.id);
-            if (clientDetails) {
-                orders = orders.filter(o => o.company_id === clientDetails.id);
-            } else {
-                // Fallback for direct user_id match if company_id is not used consistently
-                orders = orders.filter(o => o.client_id === req.user.id);
-            }
+        if (role === 'client' && !req.user.companyId) {
+             // Fallback if they are a client but don't have a companyId in token
+             orders = orders.filter(o => o.client_id === req.user.id);
         }
-        
+
         res.json({ success: true, count: orders.length, data: orders });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -47,14 +42,14 @@ const createOrder = async (req, res) => {
     try {
         const body = req.body;
         const items = body.items || [];
-        
+
         // Calculate total from items if not provided
-        const total = body.total || body.total_amount || 
+        const total = body.total || body.total_amount ||
             items.reduce((acc, item) => acc + ((item.quantity || item.qty || 0) * (item.unit_price || item.price || 0)), 0);
-        
+
         const orderData = {
-            clientId: body.clientId || body.client_id,
-            companyId: body.companyId || body.company_id || body.clientId || body.client_id,
+            clientId: body.clientId || body.client_id || (req.user.role === 'Client' ? req.user.id : null),
+            companyId: body.companyId || body.company_id || req.user.companyId || null,
             vendorId: body.vendorId || body.vendor_id,
             type: body.type || 'Custom Order',
             notes: body.notes,
@@ -103,24 +98,9 @@ const deleteOrder = async (req, res) => {
 
 const getProjects = async (req, res) => {
     try {
-        let projects = await Project.getAllProjects();
-        
-        // Role-based filtering
-        const role = req.user.role.toLowerCase().replace(/\s/g, '');
-        if (role === 'client') {
-            const Client = require('../models/clientModel');
-            const clientDetails = await Client.getByUserId(req.user.id);
-            if (clientDetails) {
-                projects = projects.filter(p => p.company_id === clientDetails.id);
-            } else {
-                projects = [];
-            }
-        } else if (role === 'operations' || role === 'manager') {
-            // Managers see projects they manage
-            projects = projects.filter(p => p.manager_id === req.user.id || role === 'operations');
-        }
-        // Super Admin sees all
-        
+        const companyId = req.user.role === 'super_admin' ? null : req.user.companyId;
+        const projects = await Project.getAllProjects(companyId);
+
         res.json({ success: true, count: projects.length, data: projects });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

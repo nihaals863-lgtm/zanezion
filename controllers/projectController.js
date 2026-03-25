@@ -2,7 +2,8 @@ const Project = require('../models/projectModel');
 
 const getProjects = async (req, res) => {
     try {
-        const projects = await Project.getAll();
+        const companyId = req.user.role === 'super_admin' ? null : req.user.companyId;
+        const projects = await Project.getAll(companyId);
         res.json({ success: true, data: projects });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -11,7 +12,8 @@ const getProjects = async (req, res) => {
 
 const createProject = async (req, res) => {
     try {
-        const id = await Project.create(req.body);
+        const payload = { ...req.body, company_id: req.user.companyId };
+        const id = await Project.create(payload);
         res.status(201).json({ success: true, id });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

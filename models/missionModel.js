@@ -7,7 +7,7 @@ class Mission {
             await connection.beginTransaction();
 
             const { mission_type, event_date, notes, destination_type } = missionData;
-            
+
             // Create mission
             const [result] = await connection.execute(
                 'INSERT INTO missions (order_id, mission_type, event_date, notes, destination_type, status) VALUES (?, ?, ?, ?, ?, ?)',
@@ -52,14 +52,14 @@ class Mission {
             LEFT JOIN clients c ON o.company_id = c.id
             ORDER BY m.created_at DESC
         `);
-        
+
         const results = [];
         for (const row of rows) {
             const [items] = await db.execute(
                 'SELECT * FROM mission_items WHERE mission_id = ?',
                 [row.id]
             );
-            
+
             results.push({
                 ...row,
                 items: items
@@ -78,14 +78,14 @@ class Mission {
             LEFT JOIN clients c ON o.company_id = c.id
             WHERE m.id = ?
         `, [id]);
-        
+
         if (!rows[0]) return null;
-        
+
         const [items] = await db.execute(
             'SELECT * FROM mission_items WHERE mission_id = ?',
             [id]
         );
-        
+
         return {
             ...rows[0],
             items: items
@@ -105,23 +105,23 @@ class Mission {
             const orderId = missionRows[0].order_id;
 
             const [result] = await connection.execute(
-                'UPDATE missions SET assigned_driver = ?, vehicle_id = ?, status = ? WHERE id = ?', 
+                'UPDATE missions SET assigned_driver = ?, vehicle_id = ?, status = ? WHERE id = ?',
                 [driverId, vehicleId || null, 'assigned', id]
             );
 
             // Also manage the deliveries execution table representation using order_id
             const [existingDelivery] = await connection.execute('SELECT id FROM deliveries WHERE order_id = ?', [orderId]);
-            
+
             if (existingDelivery.length > 0) {
-                 await connection.execute(
-                     'UPDATE deliveries SET driver_id = ?, vehicle_id = ?, status = ? WHERE order_id = ?', 
-                     [driverId, vehicleId || null, 'accepted', orderId]
-                 );
+                await connection.execute(
+                    'UPDATE deliveries SET driver_id = ?, vehicle_id = ?, status = ? WHERE order_id = ?',
+                    [driverId, vehicleId || null, 'accepted', orderId]
+                );
             } else {
-                 await connection.execute(
-                     'INSERT INTO deliveries (order_id, driver_id, vehicle_id, status) VALUES (?, ?, ?, ?)', 
-                     [orderId, driverId, vehicleId || null, 'accepted']
-                 );
+                await connection.execute(
+                    'INSERT INTO deliveries (order_id, driver_id, vehicle_id, status) VALUES (?, ?, ?, ?)',
+                    [orderId, driverId, vehicleId || null, 'accepted']
+                );
             }
 
             await connection.commit();

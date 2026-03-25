@@ -74,12 +74,12 @@ class PurchaseOrder {
              FROM purchase_orders po 
              LEFT JOIN vendors v ON po.vendor_id = v.id`;
         const params = [];
-        
+
         if (companyId) {
             query += ` WHERE po.company_id = ?`;
             params.push(companyId);
         }
-        
+
         query += ` ORDER BY po.created_at DESC`;
 
         const [rows] = await db.execute(query, params);
@@ -115,12 +115,12 @@ class PurchaseOrder {
              LEFT JOIN vendors v ON po.vendor_id = v.id 
              WHERE po.id = ?`;
         const params = [id];
-             
+
         if (companyId) {
             query += ` AND po.company_id = ?`;
             params.push(companyId);
         }
-             
+
         const [poRows] = await db.execute(query, params);
         if (poRows.length === 0) return null;
         const row = poRows[0];
@@ -217,13 +217,13 @@ class PurchaseOrder {
 
         const fields = Object.keys(data).map(key => `${key} = ?`).join(', ');
         const values = [...Object.values(data), id];
-        
+
         let query = `UPDATE purchase_orders SET ${fields} WHERE id = ?`;
         if (companyId) {
             query += ` AND company_id = ?`;
             values.push(companyId);
         }
-        
+
         const [result] = await db.execute(query, values);
         return result.affectedRows > 0;
     }
@@ -231,21 +231,35 @@ class PurchaseOrder {
 
 class PurchaseRequest {
     static async create(data) {
-        const { requester, items, priority, status, department, clientId } = data;
+        const { requester, items, priority, status, department, clientId, companyId, company_id } = data;
+        const cid = companyId || company_id || null;
         const [result] = await db.execute(
-            'INSERT INTO purchase_requests (requester, items, priority, status, department, client_id) VALUES (?, ?, ?, ?, ?, ?)',
-            [requester, JSON.stringify(items), priority || 'Normal', status || 'Pending', department || null, clientId || null]
+            'INSERT INTO purchase_requests (requester, items, priority, status, department, client_id, company_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [requester, JSON.stringify(items), priority || 'Normal', status || 'Pending', department || null, clientId || null, cid]
         );
         return result.insertId;
     }
 
-    static async getAll() {
-        const [rows] = await db.execute('SELECT * FROM purchase_requests ORDER BY created_at DESC');
+    static async getAll(company_id = null) {
+        let query = 'SELECT * FROM purchase_requests';
+        const params = [];
+        if (company_id !== undefined && company_id !== null) {
+            query += ' WHERE company_id = ?';
+            params.push(company_id);
+        }
+        query += ' ORDER BY created_at DESC';
+        const [rows] = await db.execute(query, params);
         return rows.map(r => ({ ...r, items: JSON.parse(r.items || '[]') }));
     }
 
-    static async getById(id) {
-        const [rows] = await db.execute('SELECT * FROM purchase_requests WHERE id = ?', [id]);
+    static async getById(id, company_id = null) {
+        let query = 'SELECT * FROM purchase_requests WHERE id = ?';
+        const params = [id];
+        if (company_id !== undefined && company_id !== null) {
+            query += ' AND company_id = ?';
+            params.push(company_id);
+        }
+        const [rows] = await db.execute(query, params);
         if (rows.length === 0) return null;
         return { ...rows[0], items: JSON.parse(rows[0].items || '[]') };
     }
@@ -255,14 +269,14 @@ class PurchaseRequest {
         const data = {};
         Object.keys(updateData).forEach(key => {
             if (allowedFields.includes(key) && updateData[key] !== undefined) {
-                data[key] = key === 'items' && typeof updateData[key] !== 'string' 
-                    ? JSON.stringify(updateData[key]) 
+                data[key] = key === 'items' && typeof updateData[key] !== 'string'
+                    ? JSON.stringify(updateData[key])
                     : updateData[key];
             }
         });
 
         if (Object.keys(data).length === 0) return true;
-        
+
         const fields = Object.keys(data).map(key => `${key} = ?`).join(', ');
         const values = [...Object.values(data), id];
         const [result] = await db.execute(`UPDATE purchase_requests SET ${fields} WHERE id = ?`, values);
@@ -277,21 +291,35 @@ class PurchaseRequest {
 
 class Quote {
     static async create(data) {
-        const { vendorId, items, total, status, leadTime, validity } = data;
+        const { vendorId, items, total, status, leadTime, validity, companyId, company_id } = data;
+        const cid = companyId || company_id || null;
         const [result] = await db.execute(
-            'INSERT INTO quotes (vendor_id, items, total, status, lead_time, validity) VALUES (?, ?, ?, ?, ?, ?)',
-            [vendorId, JSON.stringify(items), total, status || 'Active', leadTime || null, validity || null]
+            'INSERT INTO quotes (vendor_id, items, total, status, lead_time, validity, company_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [vendorId, JSON.stringify(items), total, status || 'Active', leadTime || null, validity || null, cid]
         );
         return result.insertId;
     }
 
-    static async getAll() {
-        const [rows] = await db.execute('SELECT * FROM quotes ORDER BY created_at DESC');
+    static async getAll(company_id = null) {
+        let query = 'SELECT * FROM quotes';
+        const params = [];
+        if (company_id !== undefined && company_id !== null) {
+            query += ' WHERE company_id = ?';
+            params.push(company_id);
+        }
+        query += ' ORDER BY created_at DESC';
+        const [rows] = await db.execute(query, params);
         return rows.map(r => ({ ...r, items: JSON.parse(r.items || '[]') }));
     }
 
-    static async getById(id) {
-        const [rows] = await db.execute('SELECT * FROM quotes WHERE id = ?', [id]);
+    static async getById(id, company_id = null) {
+        let query = 'SELECT * FROM quotes WHERE id = ?';
+        const params = [id];
+        if (company_id !== undefined && company_id !== null) {
+            query += ' AND company_id = ?';
+            params.push(company_id);
+        }
+        const [rows] = await db.execute(query, params);
         if (rows.length === 0) return null;
         return { ...rows[0], items: JSON.parse(rows[0].items || '[]') };
     }
@@ -301,14 +329,14 @@ class Quote {
         const data = {};
         Object.keys(updateData).forEach(key => {
             if (allowedFields.includes(key) && updateData[key] !== undefined) {
-                data[key] = key === 'items' && typeof updateData[key] !== 'string' 
-                    ? JSON.stringify(updateData[key]) 
+                data[key] = key === 'items' && typeof updateData[key] !== 'string'
+                    ? JSON.stringify(updateData[key])
                     : updateData[key];
             }
         });
 
         if (Object.keys(data).length === 0) return true;
-        
+
         const fields = Object.keys(data).map(key => `${key} = ?`).join(', ');
         const values = [...Object.values(data), id];
         const [result] = await db.execute(`UPDATE quotes SET ${fields} WHERE id = ?`, values);
