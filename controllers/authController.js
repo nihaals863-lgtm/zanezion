@@ -55,9 +55,15 @@ const loginUser = async (req, res) => {
         if (user && (await User.comparePassword(password, user.password))) {
             // Check if status is Pending
             if (user.status === 'Pending') {
+<<<<<<< HEAD
                 return res.status(403).json({
                     success: false,
                     message: 'Your account is currently under audit by ZaneZion HQ. Please wait for approval.'
+=======
+                return res.status(403).json({ 
+                    success: false, 
+                    message: 'Your account is currently under audit by ZaneZion HQ. Please wait for approval.' 
+>>>>>>> 881a753e8656230adba4f9372fb7ba0f10d4e325
                 });
             }
 
@@ -108,7 +114,11 @@ const loginUser = async (req, res) => {
                     id: user.id,
                     role: user.role,
                     menuPermissions,
+<<<<<<< HEAD
                     token: generateToken(user.id, user.role, user.company_id || (['client', 'saas_client'].includes(normalizedRole) ? (details?.id || null) : null))
+=======
+                    token: generateToken(user.id, user.role, user.company_id || (user.role === 'Client' ? (details?.id || null) : null))
+>>>>>>> 881a753e8656230adba4f9372fb7ba0f10d4e325
                 }
             });
         } else {
@@ -294,12 +304,17 @@ const registerStaff = async (req, res) => {
 // @access  Private (Admin Only)
 const getPendingStaff = async (req, res) => {
     try {
+<<<<<<< HEAD
         const companyId = req.user.role === 'super_admin' ? null : req.user.companyId;
         let query = `
+=======
+        const [rows] = await db.execute(`
+>>>>>>> 881a753e8656230adba4f9372fb7ba0f10d4e325
             SELECT u.name, u.email, u.phone, u.status, sd.*, u.id as id 
             FROM users u 
             JOIN staff_details sd ON u.id = sd.user_id 
             WHERE u.status = 'Pending' AND u.role NOT IN ('Client', 'Vendor')
+<<<<<<< HEAD
         `;
         const params = [];
 
@@ -309,6 +324,9 @@ const getPendingStaff = async (req, res) => {
         }
 
         const [rows] = await db.execute(query, params);
+=======
+        `);
+>>>>>>> 881a753e8656230adba4f9372fb7ba0f10d4e325
         res.json({ success: true, data: rows });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -326,9 +344,15 @@ const reviewStaff = async (req, res) => {
         const success = await User.update(userId, { status });
 
         if (success) {
+<<<<<<< HEAD
             res.json({
                 success: true,
                 message: `Staff protocol ${status === 'Active' ? 'Activated' : 'Denied'} successfully.`
+=======
+            res.json({ 
+                success: true, 
+                message: `Staff protocol ${status === 'Active' ? 'Activated' : 'Denied'} successfully.` 
+>>>>>>> 881a753e8656230adba4f9372fb7ba0f10d4e325
             });
         } else {
             res.status(400).json({ success: false, message: 'Failed to update protocol status.' });
@@ -343,6 +367,7 @@ module.exports = {
     registerStaff,
     getPendingStaff,
     reviewStaff,
+<<<<<<< HEAD
     loginUser,
     getUserProfile,
     updateUserProfile,
@@ -354,6 +379,8 @@ module.exports = {
     registerStaff,
     getPendingStaff,
     reviewStaff,
+=======
+>>>>>>> 881a753e8656230adba4f9372fb7ba0f10d4e325
     loginUser,
     getUserProfile,
     updateUserProfile,
