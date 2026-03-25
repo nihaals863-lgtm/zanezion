@@ -77,13 +77,8 @@ class User {
         return rows[0];
     }
 
-<<<<<<< HEAD
     static async findAll(companyId) {
         let query = `
-=======
-    static async findAll() {
-        const [rows] = await db.execute(`
->>>>>>> 881a753e8656230adba4f9372fb7ba0f10d4e325
             SELECT u.*, sd.*, u.id as id 
             FROM users u 
             LEFT JOIN staff_details sd ON u.id = sd.user_id 
@@ -92,12 +87,12 @@ class User {
         const params = [];
 
         if (companyId !== undefined) {
-             if (companyId === null) {
-                 // Superadmin Global View
-             } else {
-                 query += ' AND u.company_id = ?';
-                 params.push(companyId);
-             }
+            if (companyId === null) {
+                // Superadmin Global View
+            } else {
+                query += ' AND u.company_id = ?';
+                params.push(companyId);
+            }
         }
 
         const [rows] = await db.execute(query, params);

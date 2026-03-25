@@ -29,8 +29,7 @@ class Order {
                 );
                 if (clientRows.length > 0) {
                     userClientId = clientRows[0].user_id;
-                } else {
-                    // It might already be a user id, let's verify
+                } else { // It might already be a user id, let's verify
                     const [userRows] = await connection.execute(
                         'SELECT id FROM users WHERE id = ? LIMIT 1', [clientId]
                     );
@@ -171,7 +170,6 @@ class Order {
             await connection.beginTransaction();
 
             const allowedFields = ['client_id', 'company_id', 'vendor_id', 'type', 'notes', 'total_amount', 'status', 'due_date', 'order_date'];
-<<<<<<< HEAD
 
             // Map camelCase to snake_case if present
             const normalizedData = {
@@ -184,20 +182,6 @@ class Order {
                 total_amount: updateData.total || updateData.totalAmount || updateData.total_amount
             };
 
-=======
-            
-            // Map camelCase to snake_case if present
-            const normalizedData = {
-                ...updateData,
-                client_id: updateData.clientId || updateData.client_id,
-                company_id: updateData.companyId || updateData.company_id,
-                vendor_id: updateData.vendorId || updateData.vendor_id,
-                due_date: updateData.dueDate || updateData.due_date,
-                order_date: updateData.orderDate || updateData.order_date || updateData.date,
-                total_amount: updateData.total || updateData.totalAmount || updateData.total_amount
-            };
-
->>>>>>> 881a753e8656230adba4f9372fb7ba0f10d4e325
             const data = Object.entries(normalizedData)
                 .filter(([key, value]) => value !== undefined && allowedFields.includes(key))
                 .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
@@ -216,11 +200,6 @@ class Order {
                     const quantity = item.quantity || item.qty || 0;
                     const unit_price = item.unit_price || item.price || 0;
                     const totalPrice = quantity * unit_price;
-<<<<<<< HEAD
-
-=======
-                    
->>>>>>> 881a753e8656230adba4f9372fb7ba0f10d4e325
                     await connection.execute(
                         'INSERT INTO order_items (order_id, item_id, name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?)',
                         [id, item.item_id || null, name, quantity, unit_price, totalPrice]
