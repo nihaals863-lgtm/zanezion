@@ -1,8 +1,9 @@
 const mysql = require('mysql2/promise');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
 // Railway uses MYSQLHOST/RAILWAYMYSQL vars internally; fall back to local DB_ vars
-const isRailway = !!(process.env.MYSQLHOST || process.env.DB_HOST?.includes('rlwy.net'));
+const isRailway = !!(process.env.MYSQLHOST || (process.env.DB_HOST && process.env.DB_HOST.includes('rlwy.net')));
 
 const dbConfig = {
     host:     process.env.MYSQLHOST     || process.env.DB_HOST     || 'localhost',

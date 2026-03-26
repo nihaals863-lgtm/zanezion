@@ -18,7 +18,14 @@ const saasController = {
 
     getRequests: async (req, res, next) => {
         try {
-            const requests = await SubscriptionRequest.getAll();
+            const role = req.user.role.toLowerCase().replace(/\s/g, '');
+            let filterId = undefined; // Default: No filtering
+
+            if (role === 'operations') {
+                filterId = req.user.id;
+            }
+
+            const requests = await SubscriptionRequest.getAll(filterId);
             res.json({ success: true, data: requests });
         } catch (error) {
             next(error);
@@ -50,6 +57,13 @@ const saasController = {
                 return res.status(404).json({ success: false, message: 'Subscription request not found' });
             }
 
+            if (request.status === 'Provisioned' || request.status === 'Approved') {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'This subscription protocol has already been activated or provisioned.' 
+                });
+            }
+
             // 2. Generate a random password
             const generatedPassword = crypto.randomBytes(4).toString('hex'); // 8-char hex password
 
@@ -67,7 +81,8 @@ const saasController = {
                 contact_person: request.contact,
                 business_name: request.client_name,
                 source: 'Subscriber',
-                status: 'active'
+                status: 'active',
+                assigned_admin_id: request.assigned_admin_id
             });
 
             // 4. Update subscription request status to Provisioned

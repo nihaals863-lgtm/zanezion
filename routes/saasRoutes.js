@@ -9,11 +9,11 @@ router.post('/submit', saasController.submitRequest);
 
 // Protected routes for admin management
 router.use(protect);
-router.use(authorize('super_admin'));
+router.use(authorize('super_admin', 'operations'));
 
-router.get('/', saasController.getRequests);
-router.put('/:id/status', saasController.updateRequestStatus);
-router.post('/:id/provision', saasController.provisionClient);
-router.delete('/:id', saasController.deleteRequest);
+router.get('/requests', saasController.getRequests);
+router.put('/requests/:id/status', saasController.updateRequestStatus);
+router.post('/requests/:id/provision', saasController.provisionClient);
+router.delete('/requests/:id', saasController.deleteRequest);
 
 module.exports = router;

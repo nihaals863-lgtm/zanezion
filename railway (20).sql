@@ -91,10 +91,10 @@ CREATE TABLE `audit_logs` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `	tenants`
+-- Table structure for table `clients`
 --
 
-CREATE TABLE `	tenants` (
+CREATE TABLE `clients` (
   `id` int NOT NULL,
   `user_id` int NOT NULL,
   `address` text,
@@ -116,10 +116,10 @@ CREATE TABLE `	tenants` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
--- Dumping data for table `	tenants`
+-- Dumping data for table `clients`
 --
 
-INSERT INTO `	tenants` (`id`, `user_id`, `address`, `location`, `source`, `client_type`, `plan`, `billing_cycle`, `payment_method`, `contact_person`, `business_name`, `logo_url`, `primary_color`, `tagline`, `status`, `created_at`, `updated_at`, `deleted_at`) VALUES
+INSERT INTO `clients` (`id`, `user_id`, `address`, `location`, `source`, `client_type`, `plan`, `billing_cycle`, `payment_method`, `contact_person`, `business_name`, `logo_url`, `primary_color`, `tagline`, `status`, `created_at`, `updated_at`, `deleted_at`) VALUES
 (1, 8, NULL, NULL, 'Manual', 'SaaS', 'Enterprise', 'Monthly', NULL, NULL, 'Institutional Partner 11', NULL, NULL, NULL, 'active', '2026-03-21 12:14:13', '2026-03-21 12:14:13', NULL),
 (2, 9, 'xxvbcv', 'sdgdf', 'Manual', 'SaaS', 'Standard', 'Monthly', 'Wire Transfer', 'dgsdfgffd', 'bvbxcv', NULL, NULL, NULL, 'Active', '2026-03-21 12:22:35', '2026-03-21 12:22:35', NULL),
 (3, 10, NULL, 'monaco', 'Landing Page', 'SaaS', 'BASIC', 'Monthly', 'Credit Card', 'smith', 'jhon', NULL, NULL, NULL, 'active', '2026-03-21 12:39:23', '2026-03-21 12:39:23', NULL),
@@ -277,7 +277,7 @@ CREATE TABLE `inventory_items` (
   `price` decimal(10,2) DEFAULT NULL,
   `inventory_type` enum('Marketplace','Client') DEFAULT 'Marketplace',
   `client_id` int DEFAULT NULL,
-  `	tenant_id` int DEFAULT NULL,
+  `company_id` int DEFAULT NULL,
   `status` enum('in_stock','out_of_stock','low_stock') DEFAULT 'in_stock',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -288,7 +288,7 @@ CREATE TABLE `inventory_items` (
 -- Dumping data for table `inventory_items`
 --
 
-INSERT INTO `inventory_items` (`id`, `name`, `sku`, `description`, `category`, `unit`, `quantity`, `threshold`, `warehouse_id`, `vendor_id`, `price`, `inventory_type`, `client_id`, `	tenant_id`, `status`, `created_at`, `updated_at`, `deleted_at`) VALUES
+INSERT INTO `inventory_items` (`id`, `name`, `sku`, `description`, `category`, `unit`, `quantity`, `threshold`, `warehouse_id`, `vendor_id`, `price`, `inventory_type`, `client_id`, `company_id`, `status`, `created_at`, `updated_at`, `deleted_at`) VALUES
 (1, 'Industrial Generator G-400', 'GEN-400', NULL, 'Power Systems', NULL, 5, 10, 1, 1, 12500.00, 'Marketplace', NULL, NULL, 'in_stock', '2026-03-21 12:14:15', '2026-03-21 12:14:15', NULL),
 (2, 'Luxury SUV Spare (R22)', 'TIRE-LX22', NULL, 'Fleet Maintenance', NULL, 12, 10, 1, 2, 450.00, 'Marketplace', NULL, NULL, 'in_stock', '2026-03-21 12:14:15', '2026-03-21 12:14:15', NULL),
 (3, 'Secured Communication Module', 'SEC-COM-01', NULL, 'IT & Comms', NULL, 25, 10, 2, 1, 890.00, 'Marketplace', NULL, NULL, 'in_stock', '2026-03-21 12:14:15', '2026-03-21 12:14:15', NULL),
@@ -394,7 +394,7 @@ INSERT INTO `menus` (`id`, `name`, `path`, `icon`, `parent_id`, `sort_order`, `c
 (2, 'Staff Management', '/dashboard/users', 'UserCog', NULL, 20, '2026-03-21 12:14:20'),
 (3, 'Security Protocols', '/dashboard/roles-permissions', 'ShieldCheck', NULL, 30, '2026-03-21 12:14:20'),
 (4, 'SaaS Management', '/dashboard/plans', 'Globe', NULL, 40, '2026-03-21 12:14:20'),
-(5, '	tenants', '/dashboard/	tenants', 'Building', NULL, 50, '2026-03-21 12:14:20'),
+(5, 'Clients', '/dashboard/clients', 'Building', NULL, 50, '2026-03-21 12:14:20'),
 (6, 'Projects', '/dashboard/projects', 'Briefcase', NULL, 60, '2026-03-21 12:14:20'),
 (7, 'Deliveries', '/dashboard/deliveries', 'MapPin', NULL, 70, '2026-03-21 12:14:20'),
 (8, 'Orders', '/dashboard/orders', 'ShoppingCart', NULL, 80, '2026-03-21 12:14:20'),
@@ -497,7 +497,7 @@ INSERT INTO `mission_items` (`id`, `mission_id`, `item_name`, `qty`, `weight`, `
 CREATE TABLE `orders` (
   `id` int NOT NULL,
   `client_id` int NOT NULL,
-  `	tenant_id` int DEFAULT NULL,
+  `company_id` int DEFAULT NULL,
   `vendor_id` int DEFAULT NULL,
   `type` varchar(100) DEFAULT 'Custom Order',
   `status` enum('pending_review','approved','project_converted','in_progress','completed','cancelled') DEFAULT 'pending_review',
@@ -514,7 +514,7 @@ CREATE TABLE `orders` (
 -- Dumping data for table `orders`
 --
 
-INSERT INTO `orders` (`id`, `client_id`, `	tenant_id`, `vendor_id`, `type`, `status`, `total_amount`, `order_date`, `due_date`, `notes`, `created_at`, `updated_at`, `deleted_at`) VALUES
+INSERT INTO `orders` (`id`, `client_id`, `company_id`, `vendor_id`, `type`, `status`, `total_amount`, `order_date`, `due_date`, `notes`, `created_at`, `updated_at`, `deleted_at`) VALUES
 (1001, 8, 1, NULL, 'Custom Order', 'approved', 25000.00, '2026-03-21 12:14:15', NULL, 'Priority site setup request.', '2026-03-21 12:14:15', '2026-03-21 12:14:15', NULL),
 (1002, 8, 1, NULL, 'Custom Order', 'pending_review', 890.00, '2026-03-21 12:14:15', NULL, 'Routine equipment replacement.', '2026-03-21 12:14:15', '2026-03-21 12:14:15', NULL),
 (1003, 14, 5, 1, 'Provisioning', 'pending_review', 38.61, '2026-03-21 00:00:00', '2026-03-25 00:00:00', NULL, '2026-03-21 15:13:37', '2026-03-21 15:14:08', NULL);
@@ -619,7 +619,7 @@ INSERT INTO `permissions` (`id`, `name`, `description`, `created_at`) VALUES
 CREATE TABLE `projects` (
   `id` int NOT NULL,
   `order_id` int DEFAULT NULL,
-  `	tenant_id` int DEFAULT NULL,
+  `company_id` int DEFAULT NULL,
   `name` varchar(255) NOT NULL,
   `description` text,
   `manager_id` int DEFAULT NULL,
@@ -656,7 +656,7 @@ CREATE TABLE `proof_of_delivery` (
 CREATE TABLE `purchase_orders` (
   `id` int NOT NULL,
   `vendor_id` int NOT NULL,
-  `	tenant_id` int DEFAULT NULL,
+  `company_id` int DEFAULT NULL,
   `vendor_name` varchar(255) DEFAULT NULL,
   `total` decimal(15,2) DEFAULT '0.00',
   `status` enum('Pending','Authorized','Partially Received','Completed') DEFAULT 'Pending',
@@ -700,7 +700,7 @@ CREATE TABLE `purchase_requests` (
   `priority` varchar(50) DEFAULT NULL,
   `department` varchar(100) DEFAULT NULL,
   `client_id` int DEFAULT NULL,
-  `	tenant_id` int DEFAULT NULL,
+  `company_id` int DEFAULT NULL,
   `status` varchar(50) DEFAULT 'Pending',
   `approval_status` enum('Pending','Approved','Rejected') DEFAULT 'Pending',
   `approved_by_id` int DEFAULT NULL,
@@ -1007,7 +1007,7 @@ CREATE TABLE `support_tickets` (
 
 CREATE TABLE `users` (
   `id` int NOT NULL,
-  `	tenant_id` int DEFAULT NULL,
+  `company_id` int DEFAULT NULL,
   `name` varchar(255) NOT NULL,
   `email` varchar(255) NOT NULL,
   `phone` varchar(20) DEFAULT NULL,
@@ -1024,7 +1024,7 @@ CREATE TABLE `users` (
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`id`, `	tenant_id`, `name`, `email`, `phone`, `password`, `role`, `status`, `avatar_url`, `created_at`, `updated_at`, `deleted_at`) VALUES
+INSERT INTO `users` (`id`, `company_id`, `name`, `email`, `phone`, `password`, `role`, `status`, `avatar_url`, `created_at`, `updated_at`, `deleted_at`) VALUES
 (1, NULL, 'Super Admin', 'admin@zanezion.com', '1234567890', '$2b$10$4yK1qPmTtl8ouQv0cEh2vuXN2xfKWWPpQr.j5D1K7UJppWl4iuwPq', 'super_admin', 'Active', NULL, '2026-03-21 12:14:12', '2026-03-21 12:20:45', NULL),
 (2, NULL, 'Concierge Manager', 'demo1@example.com', '242-555-0101', '$2b$10$0upE9jQOGx/y8J/vyx8fsucmqzlC65AQ7cnBwo6.pgiVGsToxO55m', 'Concierge Manager', 'Active', NULL, '2026-03-21 12:14:12', '2026-03-21 12:43:03', NULL),
 (3, NULL, 'Operations Lead', 'operation@example.com', '242-555-0102', '$2b$10$1UZmcSrKFEbXsuTxFnt3Q.0eLrSThzWFJXN2jX3kxxFwAdjbU1j9m', 'operations', 'Active', NULL, '2026-03-21 12:14:12', '2026-03-21 12:41:41', NULL),
@@ -1050,7 +1050,7 @@ CREATE TABLE `vehicles` (
   `plate_number` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `type` varchar(50) DEFAULT NULL,
-  `	tenant_id` int DEFAULT NULL,
+  `company_id` int DEFAULT NULL,
   `fuel_level` int DEFAULT '100',
   `vehicle_type` enum('Van','Boat','Truck','Car','Plane') DEFAULT 'Truck',
   `status` varchar(50) DEFAULT 'available',
@@ -1076,7 +1076,7 @@ CREATE TABLE `vendors` (
   `contact_name` varchar(255) DEFAULT NULL,
   `email` varchar(255) DEFAULT NULL,
   `phone` varchar(20) DEFAULT NULL,
-  `	tenant_id` int DEFAULT NULL,
+  `company_id` int DEFAULT NULL,
   `address` text,
   `category` varchar(100) DEFAULT NULL,
   `status` enum('active','inactive') DEFAULT 'active',
@@ -1089,7 +1089,7 @@ CREATE TABLE `vendors` (
 -- Dumping data for table `vendors`
 --
 
-INSERT INTO `vendors` (`id`, `user_id`, `name`, `contact_name`, `email`, `phone`, `	tenant_id`, `address`, `category`, `status`, `created_at`, `updated_at`, `deleted_at`) VALUES
+INSERT INTO `vendors` (`id`, `user_id`, `name`, `contact_name`, `email`, `phone`, `company_id`, `address`, `category`, `status`, `created_at`, `updated_at`, `deleted_at`) VALUES
 (1, NULL, 'Global Logistics Corp', 'John Carter', 'contact@globallogistics.com', NULL, NULL, NULL, 'Shipping', 'active', '2026-03-21 12:14:13', '2026-03-21 12:14:13', NULL),
 (2, NULL, 'Elite Fleet Services', 'Sarah Miller', 'admin@elitefleet.com', NULL, NULL, NULL, 'Chauffeur', 'active', '2026-03-21 12:14:13', '2026-03-21 12:14:13', NULL);
 
@@ -1104,7 +1104,7 @@ CREATE TABLE `warehouses` (
   `name` varchar(255) NOT NULL,
   `location` text,
   `manager_id` int DEFAULT NULL,
-  `	tenant_id` int DEFAULT NULL,
+  `company_id` int DEFAULT NULL,
   `status` enum('active','inactive') DEFAULT 'active',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -1115,7 +1115,7 @@ CREATE TABLE `warehouses` (
 -- Dumping data for table `warehouses`
 --
 
-INSERT INTO `warehouses` (`id`, `name`, `location`, `manager_id`, `	tenant_id`, `status`, `created_at`, `updated_at`, `deleted_at`) VALUES
+INSERT INTO `warehouses` (`id`, `name`, `location`, `manager_id`, `company_id`, `status`, `created_at`, `updated_at`, `deleted_at`) VALUES
 (1, 'Main Terminal A', 'Nassau Corporate District', NULL, NULL, 'active', '2026-03-21 12:14:14', '2026-03-21 12:14:14', NULL),
 (2, 'Logistics Hub B', 'Freeport Coastal Zone', NULL, NULL, 'active', '2026-03-21 12:14:14', '2026-03-21 12:14:14', NULL);
 
@@ -1143,9 +1143,9 @@ ALTER TABLE `audit_logs`
   ADD KEY `user_id` (`user_id`);
 
 --
--- Indexes for table `	tenants`
+-- Indexes for table `clients`
 --
-ALTER TABLE `	tenants`
+ALTER TABLE `clients`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `user_id` (`user_id`);
 
@@ -1197,7 +1197,7 @@ ALTER TABLE `inventory_items`
   ADD KEY `warehouse_id` (`warehouse_id`),
   ADD KEY `vendor_id` (`vendor_id`),
   ADD KEY `client_id` (`client_id`),
-  ADD KEY `	tenant_id` (`	tenant_id`);
+  ADD KEY `company_id` (`company_id`);
 
 --
 -- Indexes for table `invoices`
@@ -1251,7 +1251,7 @@ ALTER TABLE `mission_items`
 ALTER TABLE `orders`
   ADD PRIMARY KEY (`id`),
   ADD KEY `client_id` (`client_id`),
-  ADD KEY `	tenant_id` (`	tenant_id`),
+  ADD KEY `company_id` (`company_id`),
   ADD KEY `vendor_id` (`vendor_id`);
 
 --
@@ -1290,7 +1290,7 @@ ALTER TABLE `projects`
   ADD PRIMARY KEY (`id`),
   ADD KEY `order_id` (`order_id`),
   ADD KEY `manager_id` (`manager_id`),
-  ADD KEY `	tenant_id` (`	tenant_id`);
+  ADD KEY `company_id` (`company_id`);
 
 --
 -- Indexes for table `proof_of_delivery`
@@ -1305,7 +1305,7 @@ ALTER TABLE `proof_of_delivery`
 ALTER TABLE `purchase_orders`
   ADD PRIMARY KEY (`id`),
   ADD KEY `vendor_id` (`vendor_id`),
-  ADD KEY `	tenant_id` (`	tenant_id`),
+  ADD KEY `company_id` (`company_id`),
   ADD KEY `approved_by_id` (`approved_by_id`);
 
 --
@@ -1322,7 +1322,7 @@ ALTER TABLE `purchase_requests`
   ADD PRIMARY KEY (`id`),
   ADD KEY `item_id` (`item_id`),
   ADD KEY `requester_id` (`requester_id`),
-  ADD KEY `	tenant_id` (`	tenant_id`),
+  ADD KEY `company_id` (`company_id`),
   ADD KEY `approved_by_id` (`approved_by_id`);
 
 --
@@ -1416,7 +1416,7 @@ ALTER TABLE `users`
 ALTER TABLE `vehicles`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `plate_number` (`plate_number`),
-  ADD KEY `	tenant_id` (`	tenant_id`);
+  ADD KEY `company_id` (`company_id`);
 
 --
 -- Indexes for table `vendors`
@@ -1425,7 +1425,7 @@ ALTER TABLE `vendors`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `user_id` (`user_id`),
   ADD UNIQUE KEY `email` (`email`),
-  ADD KEY `	tenant_id` (`	tenant_id`);
+  ADD KEY `company_id` (`company_id`);
 
 --
 -- Indexes for table `warehouses`
@@ -1433,7 +1433,7 @@ ALTER TABLE `vendors`
 ALTER TABLE `warehouses`
   ADD PRIMARY KEY (`id`),
   ADD KEY `manager_id` (`manager_id`),
-  ADD KEY `	tenant_id` (`	tenant_id`);
+  ADD KEY `company_id` (`company_id`);
 
 --
 -- AUTO_INCREMENT for dumped tables
@@ -1452,9 +1452,9 @@ ALTER TABLE `audit_logs`
   MODIFY `id` int NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `	tenants`
+-- AUTO_INCREMENT for table `clients`
 --
-ALTER TABLE `	tenants`
+ALTER TABLE `clients`
   MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
@@ -1684,10 +1684,10 @@ ALTER TABLE `audit_logs`
   ADD CONSTRAINT `audit_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
 
 --
--- Constraints for table `	tenants`
+-- Constraints for table `clients`
 --
-ALTER TABLE `	tenants`
-  ADD CONSTRAINT `	tenants_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+ALTER TABLE `clients`
+  ADD CONSTRAINT `clients_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `deliveries`
@@ -1709,7 +1709,7 @@ ALTER TABLE `delivery_items`
 -- Constraints for table `events`
 --
 ALTER TABLE `events`
-  ADD CONSTRAINT `events_ibfk_1` FOREIGN KEY (`client_id`) REFERENCES `	tenants` (`id`),
+  ADD CONSTRAINT `events_ibfk_1` FOREIGN KEY (`client_id`) REFERENCES `clients` (`id`),
   ADD CONSTRAINT `events_ibfk_2` FOREIGN KEY (`manager_id`) REFERENCES `users` (`id`);
 
 --
@@ -1724,15 +1724,15 @@ ALTER TABLE `guest_requests`
 ALTER TABLE `inventory_items`
   ADD CONSTRAINT `inventory_items_ibfk_1` FOREIGN KEY (`warehouse_id`) REFERENCES `warehouses` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `inventory_items_ibfk_2` FOREIGN KEY (`vendor_id`) REFERENCES `vendors` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `inventory_items_ibfk_3` FOREIGN KEY (`client_id`) REFERENCES `	tenants` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `inventory_items_ibfk_4` FOREIGN KEY (`	tenant_id`) REFERENCES `	tenants` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `inventory_items_ibfk_3` FOREIGN KEY (`client_id`) REFERENCES `clients` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `inventory_items_ibfk_4` FOREIGN KEY (`company_id`) REFERENCES `clients` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `invoices`
 --
 ALTER TABLE `invoices`
   ADD CONSTRAINT `invoices_ibfk_1` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`),
-  ADD CONSTRAINT `invoices_ibfk_2` FOREIGN KEY (`client_id`) REFERENCES `	tenants` (`id`);
+  ADD CONSTRAINT `invoices_ibfk_2` FOREIGN KEY (`client_id`) REFERENCES `clients` (`id`);
 
 --
 -- Constraints for table `leave_requests`
@@ -1767,7 +1767,7 @@ ALTER TABLE `mission_items`
 --
 ALTER TABLE `orders`
   ADD CONSTRAINT `orders_ibfk_1` FOREIGN KEY (`client_id`) REFERENCES `users` (`id`),
-  ADD CONSTRAINT `orders_ibfk_2` FOREIGN KEY (`	tenant_id`) REFERENCES `	tenants` (`id`),
+  ADD CONSTRAINT `orders_ibfk_2` FOREIGN KEY (`company_id`) REFERENCES `clients` (`id`),
   ADD CONSTRAINT `orders_ibfk_3` FOREIGN KEY (`vendor_id`) REFERENCES `vendors` (`id`);
 
 --
@@ -1795,7 +1795,7 @@ ALTER TABLE `payroll`
 ALTER TABLE `projects`
   ADD CONSTRAINT `projects_ibfk_1` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`),
   ADD CONSTRAINT `projects_ibfk_2` FOREIGN KEY (`manager_id`) REFERENCES `users` (`id`),
-  ADD CONSTRAINT `projects_ibfk_3` FOREIGN KEY (`	tenant_id`) REFERENCES `	tenants` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `projects_ibfk_3` FOREIGN KEY (`company_id`) REFERENCES `clients` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `proof_of_delivery`
@@ -1808,7 +1808,7 @@ ALTER TABLE `proof_of_delivery`
 --
 ALTER TABLE `purchase_orders`
   ADD CONSTRAINT `purchase_orders_ibfk_1` FOREIGN KEY (`vendor_id`) REFERENCES `vendors` (`id`),
-  ADD CONSTRAINT `purchase_orders_ibfk_2` FOREIGN KEY (`	tenant_id`) REFERENCES `	tenants` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `purchase_orders_ibfk_2` FOREIGN KEY (`company_id`) REFERENCES `clients` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `purchase_orders_ibfk_3` FOREIGN KEY (`approved_by_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
@@ -1823,7 +1823,7 @@ ALTER TABLE `purchase_order_items`
 ALTER TABLE `purchase_requests`
   ADD CONSTRAINT `purchase_requests_ibfk_1` FOREIGN KEY (`item_id`) REFERENCES `inventory_items` (`id`),
   ADD CONSTRAINT `purchase_requests_ibfk_2` FOREIGN KEY (`requester_id`) REFERENCES `users` (`id`),
-  ADD CONSTRAINT `purchase_requests_ibfk_3` FOREIGN KEY (`	tenant_id`) REFERENCES `	tenants` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `purchase_requests_ibfk_3` FOREIGN KEY (`company_id`) REFERENCES `clients` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `purchase_requests_ibfk_4` FOREIGN KEY (`approved_by_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
@@ -1882,30 +1882,21 @@ ALTER TABLE `support_tickets`
 -- Constraints for table `vehicles`
 --
 ALTER TABLE `vehicles`
-  ADD CONSTRAINT `vehicles_ibfk_1` FOREIGN KEY (`	tenant_id`) REFERENCES `	tenants` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `vehicles_ibfk_1` FOREIGN KEY (`company_id`) REFERENCES `clients` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `vendors`
 --
 ALTER TABLE `vendors`
   ADD CONSTRAINT `vendors_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `vendors_ibfk_2` FOREIGN KEY (`	tenant_id`) REFERENCES `	tenants` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `vendors_ibfk_2` FOREIGN KEY (`company_id`) REFERENCES `clients` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `warehouses`
 --
 ALTER TABLE `warehouses`
   ADD CONSTRAINT `warehouses_ibfk_1` FOREIGN KEY (`manager_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `warehouses_ibfk_2` FOREIGN KEY (`	tenant_id`) REFERENCES `	tenants` (`id`) ON DELETE CASCADE;
-COMMIT;
-
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
-ALTER TABLE `warehouses`
-  ADD CONSTRAINT `warehouses_ibfk_1` FOREIGN KEY (`manager_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `warehouses_ibfk_2` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE;
-
+  ADD CONSTRAINT `warehouses_ibfk_2` FOREIGN KEY (`company_id`) REFERENCES `clients` (`id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

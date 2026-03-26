@@ -82,7 +82,7 @@ class User {
             SELECT u.*, sd.*, u.id as id 
             FROM users u 
             LEFT JOIN staff_details sd ON u.id = sd.user_id 
-            WHERE u.deleted_at IS NULL AND u.role NOT IN ('Client', 'Vendor')
+            WHERE u.deleted_at IS NULL AND u.role NOT IN ('Vendor', 'SaaS Client', 'saas_client')
         `;
         const params = [];
 
@@ -96,6 +96,15 @@ class User {
         }
 
         const [rows] = await db.execute(query, params);
+        return rows;
+    }
+
+    static async getOperationsAdmins() {
+        const [rows] = await db.execute(`
+            SELECT id, name 
+            FROM users 
+            WHERE role = 'operations' AND status = 'Active' AND deleted_at IS NULL
+        `);
         return rows;
     }
 

@@ -6,8 +6,19 @@ const db = require('../config/db');
 // @access  Private (Super Admin, Operations)
 const getClients = async (req, res) => {
     try {
-        const companyId = req.user.role === 'super_admin' ? null : req.user.companyId;
-        const clients = await Client.getAll(companyId);
+        const role = req.user.role.toLowerCase().replace(/\s/g, '');
+        const isGlobalAdmin = ['super_admin', 'superadmin', 'super admin', 'operations'].includes(role);
+        const companyId = isGlobalAdmin ? null : req.user.companyId;
+        
+        // isolation logic
+        let assignedAdminId = undefined;
+        if (role === 'operations') {
+            assignedAdminId = req.user.id;
+        } else if (['super_admin', 'superadmin', 'super_admin'].includes(role)) {
+            assignedAdminId = null; // Tells model to hide SaaS clients
+        }
+
+        const clients = await Client.getAll(companyId, assignedAdminId);
         res.json({ success: true, count: clients.length, data: clients });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -139,6 +150,19 @@ const saveClientMenuPermissions = async (req, res) => {
     }
 };
 
+// @desc    Get clients for a specific Operation
+// @route   GET /api/clients/operation/:operationId
+// @access  Private (Super Admin, Operations)
+const getOperationClients = async (req, res) => {
+    try {
+        const operationId = req.params.operationId;
+        const clients = await Client.getAll(null, operationId);
+        res.json({ success: true, count: clients.length, data: clients });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     getClients,
     getClientById,
@@ -146,6 +170,7 @@ module.exports = {
     updateClient,
     deleteClient,
     getClientMenuPermissions,
-    saveClientMenuPermissions
+    saveClientMenuPermissions,
+    getOperationClients
 };
 

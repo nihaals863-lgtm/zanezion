@@ -65,7 +65,7 @@ app.use('/api/saas/plans', accessPlanRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/settings', settingsRoutes);
-app.use('/api/saas/requests', saasRoutes);
+app.use('/api/saas', saasRoutes);
 
 // Root Route
 app.get('/', (req, res) => {

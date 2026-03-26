@@ -3,10 +3,13 @@ const router = express.Router();
 const { 
     getAllStaff, updateStaff, deleteStaff, clockIn, clockOut, getMyShifts, getActiveShifts,
     createAssignment, getAssignments, updateAssignment,
-    createLeaveRequest, getLeaveRequests, updateLeaveRequest
+    createLeaveRequest, getLeaveRequests, updateLeaveRequest,
+    getPublicAdmins
 } = require('../controllers/staffController');
 const { protect } = require('../middleware/authMiddleware');
 const { authorize } = require('../middleware/roleMiddleware');
+
+router.get('/public/admins', getPublicAdmins);
 
 router.get('/', protect, authorize('super_admin', 'hr', 'operations'), getAllStaff);
 router.route('/:id')

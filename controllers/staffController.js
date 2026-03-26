@@ -156,6 +156,18 @@ const updateLeaveRequest = async (req, res) => {
     }
 };
 
+// @desc    Get public admins (Operations)
+// @route   GET /api/staff/public/admins
+// @access  Public
+const getPublicAdmins = async (req, res) => {
+    try {
+        const admins = await User.getOperationsAdmins();
+        res.json({ success: true, data: admins });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     getAllStaff,
     updateStaff,
@@ -169,5 +181,6 @@ module.exports = {
     updateAssignment,
     createLeaveRequest,
     getLeaveRequests,
-    updateLeaveRequest
+    updateLeaveRequest,
+    getPublicAdmins
 };

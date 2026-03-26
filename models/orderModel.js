@@ -8,7 +8,7 @@ class Order {
 
             // Accept both camelCase (frontend) and snake_case field names
             const clientId = orderData.clientId || orderData.client_id || null;
-            const companyId = orderData.companyId || orderData.company_id || clientId;
+            const companyId = orderData.companyId || orderData.company_id || (clientId && typeof clientId === 'number' ? clientId : null);
             const vendorId = orderData.vendorId || orderData.vendor_id || null;
             const type = orderData.type || 'Custom Order';
             const notes = orderData.notes || null;

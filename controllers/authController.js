@@ -62,8 +62,8 @@ const loginUser = async (req, res) => {
             }
 
             let details = {};
-            const normalizedRole = user.role?.toLowerCase() || '';
-            if (normalizedRole === 'client' || normalizedRole === 'saas_client') {
+            const normalizedRole = user.role?.toLowerCase().replace(/[\s_]/g, '') || '';
+            if (normalizedRole === 'client' || normalizedRole === 'saasclient') {
                 details = await Client.getByUserId(user.id);
             } else if (normalizedRole === 'vendor') {
                 details = await Vendor.getByUserId(user.id);
@@ -71,8 +71,9 @@ const loginUser = async (req, res) => {
 
             let menuPermissions = [];
             try {
-                // Fetch menu permissions for the role
-                const [roles] = await db.execute('SELECT id FROM roles WHERE LOWER(name) = ?', [normalizedRole]);
+                // Fetch menu permissions for the role - using the original normalized role for DB check
+                const dbRoleName = user.role?.toLowerCase() || '';
+                const [roles] = await db.execute('SELECT id FROM roles WHERE LOWER(name) = ?', [dbRoleName]);
                 if (roles.length > 0) {
                     const roleId = roles[0].id;
                     const [perms] = await db.execute(`
@@ -108,7 +109,7 @@ const loginUser = async (req, res) => {
                     id: user.id,
                     role: user.role,
                     menuPermissions,
-                    token: generateToken(user.id, user.role, user.company_id || (['client', 'saas_client'].includes(normalizedRole) ? (details?.id || null) : null))
+                    token: generateToken(user.id, user.role, user.company_id || (['client', 'saasclient'].includes(normalizedRole) ? (details?.id || null) : null))
                 }
             });
         } else {
@@ -127,8 +128,8 @@ const getUserProfile = async (req, res) => {
         const user = await User.findById(req.user.id);
         if (user) {
             let details = {};
-            const normalizedRole = user.role?.toLowerCase() || '';
-            if (normalizedRole === 'client' || normalizedRole === 'saas_client') {
+            const normalizedRole = user.role?.toLowerCase().replace(/[\s_]/g, '') || '';
+            if (normalizedRole === 'client' || normalizedRole === 'saasclient') {
                 details = await Client.getByUserId(user.id);
             } else if (normalizedRole === 'vendor') {
                 details = await Vendor.getByUserId(user.id);

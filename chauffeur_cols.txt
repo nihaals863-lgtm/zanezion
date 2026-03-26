@@ -1,1 +1,0 @@
-Table 'zanezion_db.chauffeur_requests' doesn't exist
