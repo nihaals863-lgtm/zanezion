@@ -35,6 +35,7 @@ app.use(
             "http://localhost:5173",
             "https://zenezion-new.netlify.app",
             "https://zanezion.wenbear.online",
+            "https://zanezion.kiaantechnology.com"
         ],
         credentials: true
     })
