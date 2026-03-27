@@ -3,6 +3,8 @@ const Client = require('../models/clientModel');
 const Vendor = require('../models/vendorModel');
 const generateToken = require('../utils/generateToken');
 const db = require('../config/db');
+const { normalizeRole } = require('../utils/authUtils');
+const jwt = require('jsonwebtoken');
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
@@ -72,8 +74,9 @@ const loginUser = async (req, res) => {
             let menuPermissions = [];
             try {
                 // Fetch menu permissions for the role - using the original normalized role for DB check
-                const dbRoleName = user.role?.toLowerCase() || '';
-                const [roles] = await db.execute('SELECT id FROM roles WHERE LOWER(name) = ?', [dbRoleName]);
+                // RBAC: Fetch menu permissions based on role
+                const normalizedRoleName = normalizeRole(user.role);
+                const [roles] = await db.execute('SELECT id FROM roles WHERE name = ?', [normalizedRoleName]);
                 if (roles.length > 0) {
                     const roleId = roles[0].id;
                     const [perms] = await db.execute(`

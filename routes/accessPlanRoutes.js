@@ -6,9 +6,9 @@ const { authorize } = require('../middleware/roleMiddleware');
 
 // Base route: /api/saas/plans
 
-// Anyone authenticated (even clients) can view available plans
-router.get('/', protect, accessPlanController.getAllPlans);
-router.get('/:id', protect, accessPlanController.getPlanById);
+// Anyone authenticated (even clients) can view available plans, and public website needs it too
+router.get('/', accessPlanController.getAllPlans);
+router.get('/:id', accessPlanController.getPlanById);
 
 // Only super admins can modify access plans
 router.post('/', protect, authorize('super_admin'), accessPlanController.createPlan);
