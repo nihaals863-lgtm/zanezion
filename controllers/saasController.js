@@ -57,10 +57,10 @@ const saasController = {
                 return res.status(404).json({ success: false, message: 'Subscription request not found' });
             }
 
-            if (request.status === 'Provisioned' || request.status === 'Approved') {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: 'This subscription protocol has already been activated or provisioned.' 
+            if (request.status === 'Approved') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'This subscription protocol has already been activated or provisioned.'
                 });
             }
 
@@ -85,8 +85,8 @@ const saasController = {
                 assigned_admin_id: request.assigned_admin_id
             });
 
-            // 4. Update subscription request status to Provisioned
-            await SubscriptionRequest.updateStatus(id, 'Provisioned');
+            // 4. Update subscription request status to Approved (provisioned)
+            await SubscriptionRequest.updateStatus(id, 'Approved');
 
             // 5. Return credentials (plain text password) so admin can share with client
             res.json({
