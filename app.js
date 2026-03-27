@@ -33,7 +33,7 @@ app.use(
         origin: [
 
             "http://localhost:5173",
-            "https://zanezion.netlify.app",
+            "https://zenezion-new.netlify.app",
             "https://zanezion.wenbear.online",
         ],
         credentials: true
