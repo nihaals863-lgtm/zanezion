@@ -87,6 +87,20 @@ const updateDeliveryStatus = async (req, res) => {
     }
 };
 
+const deleteDelivery = async (req, res) => {
+    try {
+        const success = await Delivery.delete(req.params.id);
+        if (success) {
+            res.json({ success: true, message: 'Delivery deleted' });
+        } else {
+            res.status(404).json({ success: false, message: 'Delivery not found' });
+        }
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+
 const getRoutes = async (req, res) => {
     try {
         const companyId = req.user.role === 'super_admin' ? null : req.user.companyId;
@@ -165,6 +179,7 @@ module.exports = {
     getDeliveries,
     createDelivery,
     updateDeliveryStatus,
+    deleteDelivery,
     getRoutes,
     createRoute,
     updateRoute,

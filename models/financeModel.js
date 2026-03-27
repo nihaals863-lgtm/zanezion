@@ -44,6 +44,8 @@ class Invoice {
     }
 
     static async delete(id) {
+        // Delete associated payments first to satisfy foreign key constraint
+        await db.execute('DELETE FROM payments WHERE invoice_id = ?', [id]);
         await db.execute('DELETE FROM invoices WHERE id = ?', [id]);
     }
 }

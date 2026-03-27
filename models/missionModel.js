@@ -148,6 +148,11 @@ class Mission {
         return result.affectedRows > 0;
     }
 
+    static async updateStatus(id, status) {
+        const [result] = await db.execute('UPDATE missions SET status = ? WHERE id = ?', [status, id]);
+        return result.affectedRows > 0;
+    }
+
     static async softDelete(id) {
         const [result] = await db.execute('UPDATE missions SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [id]);
         return result.affectedRows > 0;

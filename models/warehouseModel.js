@@ -2,10 +2,10 @@ const db = require('../config/db');
 
 class Warehouse {
     static async create(data) {
-        const { name, location, manager_id } = data;
+        const { name, location, manager_id, company_id } = data;
         const [result] = await db.execute(
-            'INSERT INTO warehouses (name, location, manager_id) VALUES (?, ?, ?)',
-            [name, location, manager_id]
+            'INSERT INTO warehouses (name, location, manager_id, company_id) VALUES (?, ?, ?, ?)',
+            [name || null, location || null, manager_id || null, company_id || null]
         );
         return result.insertId;
     }

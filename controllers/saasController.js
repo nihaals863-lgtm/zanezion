@@ -91,7 +91,7 @@ const saasController = {
             // 5. Return credentials (plain text password) so admin can share with client
             res.json({
                 success: true,
-                message: 'Client provisioned successfully',
+                message: 'Strategic Account Provisioned. Credentials ready for transmission to client.',
                 data: {
                     clientId,
                     clientName: request.client_name,

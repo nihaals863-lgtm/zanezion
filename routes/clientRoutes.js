@@ -12,6 +12,7 @@ router.get('/operation/:operationId', protect, authorize('super_admin', 'operati
 
 router.route('/:id')
     .get(protect, getClientById)
+    .put(protect, authorize('super_admin', 'operations'), updateClient)
     .patch(protect, authorize('super_admin', 'operations'), updateClient)
     .delete(protect, authorize('super_admin'), deleteClient);
 

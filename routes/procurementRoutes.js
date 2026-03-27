@@ -10,8 +10,11 @@ const {
     createRequest,
     getRequests,
     updateRequest,
+    deleteRequest,
     createQuote,
-    getQuotes
+    getQuotes,
+    updateQuote,
+    deleteQuote
 } = require('../controllers/procurementController');
 router.post('/po', protect, createPO);
 router.get('/po', protect, getAllPOs);
@@ -22,10 +25,15 @@ router.put('/po/:id/receive', protect, receiveGoods);
 // Purchase Requests
 router.post('/requests', protect, createRequest);
 router.get('/requests', protect, getRequests);
-router.put('/requests/:id', protect, updateRequest);
+router.route('/requests/:id')
+    .put(protect, updateRequest)
+    .delete(protect, deleteRequest);
 
 // Quotes
 router.post('/quotes', protect, createQuote);
 router.get('/quotes', protect, getQuotes);
+router.route('/quotes/:id')
+    .put(protect, updateQuote)
+    .delete(protect, deleteQuote);
 
 module.exports = router;

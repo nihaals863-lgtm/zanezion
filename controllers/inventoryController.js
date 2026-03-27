@@ -76,9 +76,29 @@ const adjustStock = async (req, res) => {
     }
 };
 
+const getInventoryAlerts = async (req, res) => {
+    try {
+        const companyId = req.user.role === 'super_admin' ? null : req.user.companyId;
+        const allItems = await InventoryItem.getAll(companyId);
+        
+        // Filter for items that are low on stock or out of stock
+        // status is updated in adjustStock, but we can also filter here for robustness
+        const alerts = allItems.filter(item => 
+            item.status === 'low_stock' || 
+            item.status === 'out_of_stock' || 
+            item.quantity < (item.threshold || 10)
+        );
+        
+        res.json({ success: true, count: alerts.length, data: alerts });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     getInventoryItems,
     getInventoryItemById,
+    getInventoryAlerts,
     createInventoryItem,
     updateInventoryItem,
     adjustStock

@@ -164,6 +164,19 @@ class Delivery {
 
         return result.affectedRows > 0;
     }
+
+    static async delete(id) {
+        const [deliveryRows] = await db.execute('SELECT vehicle_id FROM deliveries WHERE id = ?', [id]);
+        const vehicleId = deliveryRows[0]?.vehicle_id;
+
+        await db.execute('DELETE FROM delivery_items WHERE delivery_id = ?', [id]);
+        const [result] = await db.execute('DELETE FROM deliveries WHERE id = ?', [id]);
+
+        if (vehicleId) {
+            await db.execute('UPDATE vehicles SET status = ? WHERE id = ?', ['available', vehicleId]);
+        }
+        return result.affectedRows > 0;
+    }
 }
 
 class Route {

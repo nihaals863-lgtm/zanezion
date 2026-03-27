@@ -110,6 +110,18 @@ const updateRequest = async (req, res) => {
     }
 };
 
+const deleteRequest = async (req, res) => {
+    try {
+        const success = await PurchaseRequest.delete(req.params.id);
+        if (!success) {
+            return res.status(404).json({ success: false, message: 'Purchase request not found' });
+        }
+        res.json({ success: true, message: 'Purchase request deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 // Quotes
 const createQuote = async (req, res) => {
     try {
@@ -132,6 +144,26 @@ const getQuotes = async (req, res) => {
     }
 };
 
+const updateQuote = async (req, res) => {
+    try {
+        const success = await Quote.update(req.params.id, req.body);
+        if (!success) return res.status(404).json({ success: false, message: 'Quote not found' });
+        res.json({ success: true, message: 'Quote updated successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const deleteQuote = async (req, res) => {
+    try {
+        const success = await Quote.delete(req.params.id);
+        if (!success) return res.status(404).json({ success: false, message: 'Quote not found' });
+        res.json({ success: true, message: 'Quote deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     createPO,
     getAllPOs,
@@ -141,6 +173,9 @@ module.exports = {
     createRequest,
     getRequests,
     updateRequest,
+    deleteRequest,
     createQuote,
-    getQuotes
+    getQuotes,
+    updateQuote,
+    deleteQuote
 };

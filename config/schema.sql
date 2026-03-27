@@ -334,10 +334,12 @@ CREATE TABLE IF NOT EXISTS quotes (
     total DECIMAL(10, 2),
     lead_time VARCHAR(100),
     validity VARCHAR(100),
+    company_id INT DEFAULT NULL,
     status VARCHAR(50) DEFAULT 'Active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (request_id) REFERENCES purchase_requests(id),
-    FOREIGN KEY (vendor_id) REFERENCES vendors(id)
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id),
+    FOREIGN KEY (company_id) REFERENCES clients(id) ON DELETE CASCADE
 );
 
 -- 13.1 PURCHASE_ORDERS (Full PO System)

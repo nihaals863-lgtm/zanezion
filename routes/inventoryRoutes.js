@@ -1,12 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const { getInventoryItems, getInventoryItemById, createInventoryItem, updateInventoryItem, adjustStock } = require('../controllers/inventoryController');
+const { getInventoryItems, getInventoryItemById, createInventoryItem, updateInventoryItem, adjustStock, getInventoryAlerts } = require('../controllers/inventoryController');
 const { protect } = require('../middleware/authMiddleware');
 const { authorize } = require('../middleware/roleMiddleware');
 
 router.route('/')
     .get(protect, getInventoryItems)
     .post(protect, authorize('super_admin', 'operations', 'inventory'), createInventoryItem);
+
+router.get('/alerts', protect, getInventoryAlerts);
 
 router.route('/:id')
     .get(protect, getInventoryItemById)

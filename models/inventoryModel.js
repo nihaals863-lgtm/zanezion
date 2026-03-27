@@ -95,7 +95,7 @@ class InventoryItem {
             await connection.beginTransaction();
 
             // Update quantity
-            const operator = type === 'in' ? '+' : '-';
+            const operator = ['in', 'entry'].includes(type) ? '+' : '-';
             await connection.execute(
                 `UPDATE inventory_items SET quantity = quantity ${operator} ? WHERE id = ?`,
                 [qty, id]

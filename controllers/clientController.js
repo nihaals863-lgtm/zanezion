@@ -47,9 +47,18 @@ const createClient = async (req, res) => {
             ...req.body,
             company_id: req.body.companyId || req.body.company_id || (req.user ? (['super_admin', 'superadmin'].includes(req.user.role) ? null : req.user.companyId) : null)
         };
-        // If it's a SaaS client and no password is given, we use the default from model or generate one
+        // If it's a SaaS client and no password is given, we generate one
         const isSaaS = payload.client_type === 'SaaS' || payload.clientType === 'SaaS';
-        const rawPassword = payload.password || 'Password123!';
+        let rawPassword = payload.password;
+        
+        if (isSaaS && !rawPassword) {
+            const crypto = require('crypto');
+            rawPassword = crypto.randomBytes(4).toString('hex');
+            payload.password = rawPassword;
+        } else if (!rawPassword) {
+            rawPassword = 'Password123!';
+            payload.password = rawPassword;
+        }
 
         const clientId = await Client.create(payload);
         const newClient = await Client.getById(clientId);
@@ -58,7 +67,8 @@ const createClient = async (req, res) => {
         if (isSaaS) {
             responseData.credentials = {
                 email: newClient.email,
-                password: rawPassword
+                password: rawPassword,
+                message: 'Strategic Account Provisioned. Credentials ready for transmission.'
             };
         }
 
@@ -73,10 +83,37 @@ const createClient = async (req, res) => {
 // @access  Private (Super Admin, Operations)
 const updateClient = async (req, res) => {
     try {
-        const success = await Client.update(req.params.id, req.body);
-        if (!success) return res.status(404).json({ success: false, message: 'Client not found or no changes made' });
-        const updatedClient = await Client.getById(req.params.id);
-        res.json({ success: true, data: updatedClient });
+        const id = req.params.id;
+        const currentClient = await Client.getById(id);
+        if (!currentClient) return res.status(404).json({ success: false, message: 'Client not found' });
+
+        const isActivating = (req.body.status || '').toLowerCase() === 'active' && 
+                            (currentClient.status || '').toLowerCase() !== 'active';
+        
+        const isSaaS = currentClient.client_type === 'SaaS' || currentClient.clientType === 'SaaS' || req.body.client_type === 'SaaS';
+        
+        let generatedPassword = null;
+        if ((isActivating || req.body.resetPassword) && isSaaS) {
+            const crypto = require('crypto');
+            generatedPassword = crypto.randomBytes(4).toString('hex'); // 8-char hex password
+            req.body.password = generatedPassword;
+        }
+
+        const success = await Client.update(id, req.body);
+        if (!success) return res.status(400).json({ success: false, message: 'Failed to update client' });
+
+        const updatedClient = await Client.getById(id);
+        const responseData = { success: true, data: updatedClient };
+
+        if (generatedPassword) {
+            responseData.credentials = {
+                email: updatedClient.email,
+                password: generatedPassword,
+                message: 'Account activated. Credentials generated and ready for deployment.'
+            };
+        }
+
+        res.json(responseData);
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { 
     getVehicles, createVehicle, updateVehicle, deleteVehicle,
-    getDeliveries, createDelivery, updateDeliveryStatus,
+    getDeliveries, createDelivery, updateDeliveryStatus, deleteDelivery,
     getRoutes, createRoute, updateRoute, deleteRoute,
     getDeliveryPricing, updateDeliveryPricing
 } = require('../controllers/logisticsController');
@@ -25,6 +25,9 @@ router.route('/deliveries')
 
 router.route('/deliveries/:id/status')
     .patch(protect, authorize('super_admin', 'logistics', 'field_staff'), updateDeliveryStatus);
+
+router.route('/deliveries/:id')
+    .delete(protect, authorize('super_admin', 'logistics'), deleteDelivery);
 
 // Route routes
 router.route('/routes')
