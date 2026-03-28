@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { 
-    getTickets, createTicket, updateTicketStatus, 
-    getEvents, createEvent, updateEvent, deleteEvent,
+const {
+    getTickets, createTicket, updateTicketStatus,
+    getEvents, getMyEvents, createEvent, updateEvent, deleteEvent,
     getGuestRequests, createGuestRequest, updateGuestRequest, deleteGuestRequest,
     getChauffeurRequests, getAudits, createAudit, updateAudit, deleteAudit
 } = require('../controllers/supportController');
@@ -17,6 +17,8 @@ router.route('/tickets')
 router.route('/tickets/:id/status').patch(protect, authorize('super_admin', 'operations', 'client', 'saas_client'), updateTicketStatus);
 
 // Concierge routes
+router.get('/events/my', protect, getMyEvents);  // NEW: dedicated user-specific events
+
 router.route('/events')
     .get(protect, getEvents)
     .post(protect, createEvent);

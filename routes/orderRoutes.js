@@ -11,13 +11,16 @@ router.route('/')
 
 router.route('/:id')
     .get(protect, getOrderById)
-    .put(protect, authorize('super_admin', 'operations'), async (req, res) => {
+    .put(protect, authorize('super_admin', 'operations', 'client', 'saas_client'), async (req, res) => {
         try {
             const { Order } = require('../models/orderModel');
+            console.log('[ORDER UPDATE] id:', req.params.id, 'body:', JSON.stringify(req.body).substring(0, 200));
             const success = await Order.update(req.params.id, req.body);
             if (!success) return res.status(404).json({ success: false, message: 'Order not found' });
-            res.json({ success: true, message: 'Order updated successfully' });
+            const updated = await Order.getById(req.params.id);
+            res.json({ success: true, data: updated, message: 'Order updated successfully' });
         } catch (error) {
+            console.error('[ORDER UPDATE ERROR]', error.message);
             res.status(500).json({ success: false, message: error.message });
         }
     })

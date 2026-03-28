@@ -125,15 +125,27 @@ class Delivery {
         }
     }
 
-    static async getAll(company_id = null) {
+    static async getAll(company_id = null, pagination = {}) {
+        const { limit, offset } = pagination;
         let query = 'SELECT d.*, v.plate_number, u.name as driver_name, r.name as route_name FROM deliveries d LEFT JOIN vehicles v ON d.vehicle_id = v.id LEFT JOIN users u ON d.driver_id = u.id LEFT JOIN routes r ON d.route_id = r.id';
         const params = [];
         if (company_id !== undefined && company_id !== null) {
             query = 'SELECT d.*, v.plate_number, u.name as driver_name, r.name as route_name FROM deliveries d JOIN orders o ON d.order_id = o.id LEFT JOIN vehicles v ON d.vehicle_id = v.id LEFT JOIN users u ON d.driver_id = u.id LEFT JOIN routes r ON d.route_id = r.id WHERE o.company_id = ?';
             params.push(company_id);
         }
+
+        // Get total count
+        const [countResult] = await db.execute(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
+        const total = countResult[0].total;
+
+        // Apply pagination
+        if (limit !== undefined && offset !== undefined) {
+            query += ' LIMIT ? OFFSET ?';
+            params.push(limit, offset);
+        }
+
         const [rows] = await db.execute(query, params);
-        return rows;
+        return { rows, total };
     }
 
     static async getById(id, company_id = null) {

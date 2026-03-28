@@ -14,7 +14,21 @@ class Order {
             const notes = orderData.notes || null;
             const totalAmount = orderData.total_amount || orderData.total || orderData.totalAmount || 0;
             let status = orderData.status || 'pending_review';
-            if (status.toLowerCase() === 'pending') status = 'pending_review';
+            // Normalize status to match DB ENUM values
+            const statusMap = {
+                'pending': 'pending_review',
+                'pending review': 'pending_review',
+                'pending_review': 'pending_review',
+                'approved': 'approved',
+                'in progress': 'in_progress',
+                'in_progress': 'in_progress',
+                'completed': 'completed',
+                'cancelled': 'cancelled',
+                'canceled': 'cancelled',
+                'project_converted': 'project_converted',
+                'delivered': 'completed'
+            };
+            status = statusMap[status.toLowerCase()] || 'pending_review';
 
             const dueDate = orderData.dueDate || orderData.due_date || null;
             const orderDate = orderData.requestDate || orderData.orderDate || orderData.order_date || new Date().toISOString().split('T')[0];
@@ -74,7 +88,9 @@ class Order {
         }
     }
 
-    static async getAll(companyId) {
+    static async getAll(companyId, pagination = {}) {
+        const { limit, offset, status, search } = pagination;
+
         let query = `
             SELECT o.*, COALESCE(c.business_name, u.name) AS client_name, c.client_type, v.name AS vendor_name 
              FROM orders o 
@@ -85,17 +101,39 @@ class Order {
         `;
         const params = [];
 
-        if (companyId !== undefined) {
-            if (companyId === null) {
-                // Super Admin: return ALL orders platform-wide
+        if (companyId !== undefined && companyId !== null) {
+            query += ' AND o.company_id = ?';
+            params.push(companyId);
+        }
+
+        if (status && status !== 'All') {
+            if (status === 'Active') {
+                query += ' AND o.status != "Delivered"';
+            } else if (status === 'Closed') {
+                query += ' AND o.status = "Delivered"';
             } else {
-                // Return specific tenant orders
-                query += ' AND o.company_id = ?';
-                params.push(companyId);
+                query += ' AND o.status = ?';
+                params.push(status);
             }
         }
 
+        if (search) {
+            query += ' AND (o.id LIKE ? OR c.business_name LIKE ? OR u.name LIKE ?)';
+            const searchPattern = `%${search}%`;
+            params.push(searchPattern, searchPattern, searchPattern);
+        }
+
+        // Get total count BEFORE applying limit/offset
+        const [countResult] = await db.execute(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
+        const total = countResult[0].total;
+
         query += ' ORDER BY o.created_at DESC';
+
+        // Apply Pagination
+        if (limit !== undefined && offset !== undefined) {
+            query += ' LIMIT ? OFFSET ?';
+            params.push(limit, offset);
+        }
 
         const [rows] = await db.execute(query, params);
         const results = [];
@@ -122,7 +160,7 @@ class Order {
                 }))
             });
         }
-        return results;
+        return { rows: results, total };
     }
 
     static async getById(id) {
@@ -160,7 +198,14 @@ class Order {
     }
 
     static async updateStatus(id, status) {
-        const [result] = await db.execute('UPDATE orders SET status = ? WHERE id = ?', [status, id]);
+        const statusMap = {
+            'pending': 'pending_review', 'pending review': 'pending_review', 'pending_review': 'pending_review',
+            'approved': 'approved', 'in progress': 'in_progress', 'in_progress': 'in_progress',
+            'completed': 'completed', 'cancelled': 'cancelled', 'canceled': 'cancelled',
+            'project_converted': 'project_converted', 'delivered': 'completed'
+        };
+        const normalizedStatus = statusMap[(status || '').toLowerCase()] || status;
+        const [result] = await db.execute('UPDATE orders SET status = ? WHERE id = ?', [normalizedStatus, id]);
         return result.affectedRows > 0;
     }
 
@@ -171,15 +216,36 @@ class Order {
 
             const allowedFields = ['client_id', 'company_id', 'vendor_id', 'type', 'notes', 'total_amount', 'status', 'due_date', 'order_date'];
 
+            // Normalize status to match DB ENUM
+            let normalizedStatus = updateData.status;
+            if (normalizedStatus) {
+                const statusMap = {
+                    'pending': 'pending_review', 'pending review': 'pending_review', 'pending_review': 'pending_review',
+                    'approved': 'approved', 'in progress': 'in_progress', 'in_progress': 'in_progress',
+                    'completed': 'completed', 'cancelled': 'cancelled', 'canceled': 'cancelled',
+                    'project_converted': 'project_converted', 'delivered': 'completed'
+                };
+                normalizedStatus = statusMap[normalizedStatus.toLowerCase()] || normalizedStatus;
+            }
+
+            // Sanitize FK IDs - must be valid integers or NULL
+            const safeInt = (val) => {
+                if (val === null || val === undefined || val === '' || val === 'N/A') return undefined; // skip this field
+                const num = parseInt(val);
+                return isNaN(num) ? undefined : num;
+            };
+
             // Map camelCase to snake_case if present
             const normalizedData = {
-                ...updateData,
-                client_id: updateData.clientId || updateData.client_id,
-                company_id: updateData.companyId || updateData.company_id,
-                vendor_id: updateData.vendorId || updateData.vendor_id,
+                status: normalizedStatus,
+                client_id: safeInt(updateData.clientId || updateData.client_id),
+                company_id: safeInt(updateData.companyId || updateData.company_id),
+                vendor_id: safeInt(updateData.vendorId || updateData.vendor_id),
                 due_date: updateData.dueDate || updateData.due_date,
                 order_date: updateData.orderDate || updateData.order_date || updateData.date,
-                total_amount: updateData.total || updateData.totalAmount || updateData.total_amount
+                total_amount: updateData.total || updateData.totalAmount || updateData.total_amount,
+                type: updateData.type,
+                notes: updateData.notes
             };
 
             const data = Object.entries(normalizedData)
@@ -193,16 +259,22 @@ class Order {
             }
 
             // Handle Item Updates if passed: simpler to clear and re-insert given current schema
-            if (updateData.items && Array.isArray(updateData.items)) {
+            if (updateData.items && Array.isArray(updateData.items) && updateData.items.length > 0) {
                 await connection.execute('DELETE FROM order_items WHERE order_id = ?', [id]);
                 for (const item of updateData.items) {
                     const name = item.name || item.product || null;
                     const quantity = item.quantity || item.qty || 0;
                     const unit_price = item.unit_price || item.price || 0;
                     const totalPrice = quantity * unit_price;
+                    // item_id must reference a valid inventory_items.id or be NULL
+                    let itemId = item.item_id || item.id || null;
+                    // Validate: if itemId is a string like "ORD-xxx" or non-numeric, set to NULL
+                    if (itemId && (typeof itemId === 'string' && isNaN(parseInt(itemId)))) {
+                        itemId = null;
+                    }
                     await connection.execute(
                         'INSERT INTO order_items (order_id, item_id, name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?)',
-                        [id, item.item_id || null, name, quantity, unit_price, totalPrice]
+                        [id, itemId, name, quantity, unit_price, totalPrice]
                     );
                 }
             }
@@ -255,7 +327,9 @@ class Project {
         return result.insertId;
     }
 
-    static async getAllProjects(companyId) {
+    static async getAllProjects(companyId, pagination = {}) {
+        const { limit, offset } = pagination;
+
         let query = `
             SELECT p.*, COALESCE(c.business_name, 'Direct Project') AS client_name 
             FROM projects p
@@ -267,9 +341,21 @@ class Project {
             query += ' AND p.company_id = ?';
             params.push(companyId);
         }
+
+        // Get total count BEFORE applying limit/offset
+        const [countResult] = await db.execute(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
+        const total = countResult[0].total;
+
         query += ' ORDER BY p.created_at DESC';
+
+        // Apply Pagination
+        if (limit !== undefined && offset !== undefined) {
+            query += ' LIMIT ? OFFSET ?';
+            params.push(limit, offset);
+        }
+
         const [rows] = await db.execute(query, params);
-        return rows;
+        return { rows, total };
     }
 
     static async getById(id) {

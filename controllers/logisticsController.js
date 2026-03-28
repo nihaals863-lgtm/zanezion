@@ -1,4 +1,5 @@
 const { Vehicle, Delivery, Route, DeliveryPricing } = require('../models/logisticsModel');
+const { getPaginationParams, formatPaginatedResponse } = require('../utils/pagination');
 
 const getVehicles = async (req, res) => {
     try {
@@ -48,9 +49,10 @@ const deleteVehicle = async (req, res) => {
 
 const getDeliveries = async (req, res) => {
     try {
+        const { page, limit, offset } = getPaginationParams(req.query);
         const companyId = req.user.role === 'super_admin' ? null : req.user.companyId;
-        const deliveries = await Delivery.getAll(companyId);
-        res.json({ success: true, data: deliveries });
+        const { rows: deliveries, total } = await Delivery.getAll(companyId, { limit, offset });
+        res.json(formatPaginatedResponse(deliveries, total, page, limit));
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

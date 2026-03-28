@@ -20,7 +20,8 @@ class SubscriptionRequest {
         return result.insertId;
     }
 
-    static async getAll(assignedAdminId) {
+    static async getAll(assignedAdminId, pagination = {}) {
+        const { limit, offset, search } = pagination;
         let query = `
             SELECT id, client_name as clientName, plan, contact, email, country, 
                     requirements, property_type as propertyType, throughput, add_on as addOn,
@@ -28,19 +29,36 @@ class SubscriptionRequest {
              FROM subscription_requests 
         `;
         const params = [];
+        const conditions = [];
 
         if (assignedAdminId) {
-            // Operations Admin: See their own OR unassigned (NULL) requests
-            query += ' WHERE (assigned_admin_id = ? OR assigned_admin_id IS NULL)';
+            conditions.push('(assigned_admin_id = ? OR assigned_admin_id IS NULL)');
             params.push(assignedAdminId);
-        } else if (assignedAdminId === null) {
-            // Super Admin: See ALL (no filter)
         }
+
+        if (search) {
+            conditions.push('(client_name LIKE ? OR email LIKE ? OR plan LIKE ?)');
+            const searchPattern = `%${search}%`;
+            params.push(searchPattern, searchPattern, searchPattern);
+        }
+
+        if (conditions.length > 0) {
+            query += ' WHERE ' + conditions.join(' AND ');
+        }
+
+        // Get total count
+        const [countResult] = await db.execute(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
+        const total = countResult[0].total;
 
         query += ' ORDER BY created_at DESC';
 
+        if (limit !== undefined && offset !== undefined) {
+            query += ' LIMIT ? OFFSET ?';
+            params.push(limit, offset);
+        }
+
         const [rows] = await db.execute(query, params);
-        return rows;
+        return { rows, total };
     }
 
     static async updateStatus(id, status) {

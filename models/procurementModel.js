@@ -69,18 +69,39 @@ class PurchaseOrder {
         }
     }
 
-    static async getAll(companyId = null) {
+    static async getAll(companyId = null, pagination = {}) {
+        const { limit, offset, search } = pagination;
         let query = `SELECT po.*, v.name AS resolved_vendor_name 
              FROM purchase_orders po 
              LEFT JOIN vendors v ON po.vendor_id = v.id`;
         const params = [];
+        const conditions = [];
 
         if (companyId) {
-            query += ` WHERE po.company_id = ?`;
+            conditions.push(`po.company_id = ?`);
             params.push(companyId);
         }
 
+        if (search) {
+            conditions.push(`(po.vendor_name LIKE ? OR v.name LIKE ? OR po.status LIKE ?)`);
+            const searchPattern = `%${search}%`;
+            params.push(searchPattern, searchPattern, searchPattern);
+        }
+
+        if (conditions.length > 0) {
+            query += ` WHERE ` + conditions.join(' AND ');
+        }
+
+        // Get total count
+        const [countResult] = await db.execute(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
+        const total = countResult[0].total;
+
         query += ` ORDER BY po.created_at DESC`;
+
+        if (limit !== undefined && offset !== undefined) {
+            query += ` LIMIT ? OFFSET ?`;
+            params.push(limit, offset);
+        }
 
         const [rows] = await db.execute(query, params);
         const results = [];
@@ -106,7 +127,7 @@ class PurchaseOrder {
                 }))
             });
         }
-        return results;
+        return { rows: results, total };
     }
 
     static async getById(id, companyId = null) {
@@ -240,16 +261,43 @@ class PurchaseRequest {
         return result.insertId;
     }
 
-    static async getAll(company_id = null) {
+    static async getAll(company_id = null, pagination = {}) {
+        const { limit, offset, search } = pagination;
         let query = 'SELECT * FROM purchase_requests';
         const params = [];
+        const conditions = [];
+
         if (company_id !== undefined && company_id !== null) {
-            query += ' WHERE company_id = ?';
+            conditions.push('company_id = ?');
             params.push(company_id);
         }
+
+        if (search) {
+            conditions.push('(requester LIKE ? OR department LIKE ? OR status LIKE ?)');
+            const searchPattern = `%${search}%`;
+            params.push(searchPattern, searchPattern, searchPattern);
+        }
+
+        if (conditions.length > 0) {
+            query += ' WHERE ' + conditions.join(' AND ');
+        }
+
+        // Get total count
+        const [countResult] = await db.execute(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
+        const total = countResult[0].total;
+
         query += ' ORDER BY created_at DESC';
+
+        if (limit !== undefined && offset !== undefined) {
+            query += ' LIMIT ? OFFSET ?';
+            params.push(limit, offset);
+        }
+
         const [rows] = await db.execute(query, params);
-        return rows.map(r => ({ ...r, items: JSON.parse(r.items || '[]') }));
+        return { 
+            rows: rows.map(r => ({ ...r, items: JSON.parse(r.items || '[]') })), 
+            total 
+        };
     }
 
     static async getById(id, company_id = null) {
@@ -300,16 +348,43 @@ class Quote {
         return result.insertId;
     }
 
-    static async getAll(company_id = null) {
+    static async getAll(company_id = null, pagination = {}) {
+        const { limit, offset, search } = pagination;
         let query = 'SELECT * FROM quotes';
         const params = [];
+        const conditions = [];
+
         if (company_id !== undefined && company_id !== null) {
-            query += ' WHERE company_id = ?';
+            conditions.push('company_id = ?');
             params.push(company_id);
         }
+
+        if (search) {
+            conditions.push('(status LIKE ? OR total LIKE ?)');
+            const searchPattern = `%${search}%`;
+            params.push(searchPattern, searchPattern);
+        }
+
+        if (conditions.length > 0) {
+            query += ' WHERE ' + conditions.join(' AND ');
+        }
+
+        // Get total count
+        const [countResult] = await db.execute(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
+        const total = countResult[0].total;
+
         query += ' ORDER BY created_at DESC';
+
+        if (limit !== undefined && offset !== undefined) {
+            query += ' LIMIT ? OFFSET ?';
+            params.push(limit, offset);
+        }
+
         const [rows] = await db.execute(query, params);
-        return rows.map(r => ({ ...r, items: JSON.parse(r.items || '[]') }));
+        return { 
+            rows: rows.map(r => ({ ...r, items: JSON.parse(r.items || '[]') })), 
+            total 
+        };
     }
 
     static async getById(id, company_id = null) {

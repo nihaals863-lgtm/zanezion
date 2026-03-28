@@ -1,16 +1,40 @@
 const db = require('../config/db');
 
 class Project {
-    static async getAll(company_id = null) {
+    static async getAll(company_id = null, pagination = {}) {
+        const { limit, offset, search } = pagination;
         let query = 'SELECT * FROM projects';
         const params = [];
+        const conditions = [];
+
         if (company_id !== undefined && company_id !== null) {
-            query += ' WHERE company_id = ?';
+            conditions.push('company_id = ?');
             params.push(company_id);
         }
+
+        if (search) {
+            conditions.push('(name LIKE ? OR description LIKE ?)');
+            const searchPattern = `%${search}%`;
+            params.push(searchPattern, searchPattern);
+        }
+
+        if (conditions.length > 0) {
+            query += ' WHERE ' + conditions.join(' AND ');
+        }
+
+        // Get total count BEFORE applying limit/offset
+        const [countResult] = await db.query(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
+        const total = countResult[0].total;
+
         query += ' ORDER BY created_at DESC';
+
+        if (limit !== undefined && offset !== undefined) {
+            query += ' LIMIT ? OFFSET ?';
+            params.push(limit, offset);
+        }
+
         const [rows] = await db.query(query, params);
-        return rows;
+        return { rows, total };
     }
 
     static async create(data) {

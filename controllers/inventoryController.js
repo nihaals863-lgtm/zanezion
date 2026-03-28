@@ -2,11 +2,10 @@ const InventoryItem = require('../models/inventoryModel');
 
 const getInventoryItems = async (req, res) => {
     try {
-        const companyId = req.user.role === 'super_admin' ? null : req.user.companyId;
+        const role = (req.user.role || '').toLowerCase().replace(/[\s_]+/g, '');
+        const isGlobalRole = ['superadmin', 'inventory', 'inventorymanager', 'operations', 'procurement', 'concierge', 'conciergemanager'].includes(role);
+        const companyId = isGlobalRole ? null : req.user.companyId;
         let items = await InventoryItem.getAll(companyId);
-
-        // Role-based filtering if more specific than just companyId
-        const role = req.user.role.toLowerCase().replace(/\s/g, '');
         if (role === 'client') {
              // For clients, we show both Marketplace items (to buy) and their own Stock (to view)
              // Already handled by InventoryItem.getAll(companyId)

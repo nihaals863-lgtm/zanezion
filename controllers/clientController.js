@@ -1,25 +1,29 @@
 const Client = require('../models/clientModel');
 const db = require('../config/db');
+const { getPaginationParams, formatPaginatedResponse } = require('../utils/pagination');
 
 // @desc    Get all clients
 // @route   GET /api/clients
 // @access  Private (Super Admin, Operations)
 const getClients = async (req, res) => {
     try {
+        const { page, limit, offset } = getPaginationParams(req.query);
+        const search = req.query.search || null;
+        const clientType = req.query.client_type || null; // 'SaaS', 'Personal', or null (all)
         const role = req.user.role.toLowerCase().replace(/\s/g, '');
-        const isGlobalAdmin = ['super_admin', 'superadmin', 'super admin', 'operations'].includes(role);
+        const isGlobalAdmin = ['super_admin', 'superadmin', 'superadmin', 'operations'].includes(role);
         const companyId = isGlobalAdmin ? null : req.user.companyId;
-        
+
         // isolation logic
         let assignedAdminId = undefined;
         if (role === 'operations') {
             assignedAdminId = req.user.id;
-        } else if (['super_admin', 'superadmin', 'super_admin'].includes(role)) {
-            assignedAdminId = null; // Tells model to hide SaaS clients
+        } else if (['super_admin', 'superadmin'].includes(role)) {
+            assignedAdminId = null;
         }
 
-        const clients = await Client.getAll(companyId, assignedAdminId);
-        res.json({ success: true, count: clients.length, data: clients });
+        const { rows: clients, total } = await Client.getAll(companyId, assignedAdminId, { limit, offset, search, clientType });
+        res.json(formatPaginatedResponse(clients, total, page, limit));
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -192,9 +196,10 @@ const saveClientMenuPermissions = async (req, res) => {
 // @access  Private (Super Admin, Operations)
 const getOperationClients = async (req, res) => {
     try {
+        const { page, limit, offset } = getPaginationParams(req.query);
         const operationId = req.params.operationId;
-        const clients = await Client.getAll(null, operationId);
-        res.json({ success: true, count: clients.length, data: clients });
+        const { rows: clients, total } = await Client.getAll(null, operationId, { limit, offset });
+        res.json(formatPaginatedResponse(clients, total, page, limit));
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

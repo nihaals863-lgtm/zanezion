@@ -1,4 +1,5 @@
 const { SupportTicket, Event, GuestRequest, Audit } = require('../models/supportModel');
+const db = require('../config/db');
 
 const getTickets = async (req, res) => {
     try {
@@ -32,11 +33,41 @@ const updateTicketStatus = async (req, res) => {
     }
 };
 
+// Helper: resolve company_id for a user (even if not in JWT)
+const resolveCompanyId = async (user) => {
+    const role = (user.role || '').toLowerCase().replace(/[\s_]+/g, '');
+    if (role === 'superadmin') return null;
+    if (user.companyId) return user.companyId;
+    // Fallback: lookup from clients table by user_id
+    try {
+        const [rows] = await db.execute('SELECT id FROM clients WHERE user_id = ? AND deleted_at IS NULL', [user.id]);
+        return rows.length > 0 ? rows[0].id : null;
+    } catch { return null; }
+};
+
 const getEvents = async (req, res) => {
     try {
-        const companyId = req.user.role === 'super_admin' ? null : req.user.companyId;
-        const events = await Event.getAll(companyId);
+        const events = await Event.getAll(req.user.id);
         res.json({ success: true, data: events });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// NEW: Dedicated API - returns ONLY logged-in user's events using direct SQL
+const getMyEvents = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const [events] = await db.execute(
+            `SELECT e.*, c.business_name as client_name, u.name as manager_name
+             FROM events e
+             LEFT JOIN clients c ON e.client_id = c.id
+             LEFT JOIN users u ON e.manager_id = u.id
+             WHERE e.manager_id = ?
+             ORDER BY e.created_at DESC`,
+            [userId]
+        );
+        res.json({ success: true, data: events, userId: userId });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -54,7 +85,11 @@ const getGuestRequests = async (req, res) => {
 
 const createEvent = async (req, res) => {
     try {
-        const eventId = await Event.create(req.body);
+        const eventData = {
+            ...req.body,
+            manager_id: req.user.id  // Always set to logged-in user's ID
+        };
+        const eventId = await Event.create(eventData);
         const newEvent = await Event.getById(eventId);
         res.status(201).json({ success: true, data: newEvent });
     } catch (error) {
@@ -64,8 +99,17 @@ const createEvent = async (req, res) => {
 
 const updateEvent = async (req, res) => {
     try {
-        const success = await Event.update(req.params.id, req.body);
-        if (!success) return res.status(404).json({ success: false, message: 'Event not found' });
+        // Preserve existing event's company_id (don't let it be overwritten)
+        const existing = await Event.getById(req.params.id);
+        if (!existing) return res.status(404).json({ success: false, message: 'Event not found' });
+
+        const updateData = {
+            ...req.body,
+            manager_id: existing.manager_id,   // preserve owner - never change
+            company_id: existing.company_id     // preserve tenant ownership
+        };
+        const success = await Event.update(req.params.id, updateData);
+        if (!success) return res.status(404).json({ success: false, message: 'Event update failed' });
         const updatedEvent = await Event.getById(req.params.id);
         res.json({ success: true, data: updatedEvent });
     } catch (error) {
@@ -178,6 +222,7 @@ module.exports = {
     createTicket,
     updateTicketStatus,
     getEvents,
+    getMyEvents,
     createEvent,
     updateEvent,
     deleteEvent,

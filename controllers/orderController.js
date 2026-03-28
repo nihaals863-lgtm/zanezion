@@ -1,22 +1,25 @@
 const { Order, Project } = require('../models/orderModel');
+const { getPaginationParams, formatPaginatedResponse } = require('../utils/pagination');
 
 // @desc    Get all orders
 // @route   GET /api/orders
 // @access  Private
 const getOrders = async (req, res) => {
     try {
-        // Multi-tenant filtering: Only super_admin sees everything (if companyId is null)
-        const companyId = req.user.role === 'super_admin' ? null : req.user.companyId;
-        let orders = await Order.getAll(companyId);
+        const { page, limit, offset } = getPaginationParams(req.query);
+        const { status } = req.query;
+        const role = (req.user.role || '').toLowerCase().replace(/[\s_]+/g, '');
+        const isGlobalRole = ['superadmin', 'operations', 'procurement', 'concierge', 'conciergemanager'].includes(role);
+        const companyId = isGlobalRole ? null : req.user.companyId;
+        let { rows: orders, total } = await Order.getAll(companyId, { limit, offset, status });
 
-        // Additional filtering for Client role (optional if tenant_id is enough)
-        const role = req.user.role.toLowerCase().replace(/\s/g, '');
-        if (role === 'client' && !req.user.companyId) {
-             // Fallback if they are a client but don't have a companyId in token
+        // Client role fallback: if companyId missing, filter by user.id
+        if (['client', 'saasclient'].includes(role) && !req.user.companyId) {
              orders = orders.filter(o => o.client_id === req.user.id);
+             total = orders.length;
         }
 
-        res.json({ success: true, count: orders.length, data: orders });
+        res.json(formatPaginatedResponse(orders, total, page, limit));
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -98,10 +101,11 @@ const deleteOrder = async (req, res) => {
 
 const getProjects = async (req, res) => {
     try {
+        const { page, limit, offset } = getPaginationParams(req.query);
         const companyId = req.user.role === 'super_admin' ? null : req.user.companyId;
-        const projects = await Project.getAllProjects(companyId);
+        const { rows: projects, total } = await Project.getAllProjects(companyId, { limit, offset });
 
-        res.json({ success: true, count: projects.length, data: projects });
+        res.json(formatPaginatedResponse(projects, total, page, limit));
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

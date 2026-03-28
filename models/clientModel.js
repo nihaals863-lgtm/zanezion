@@ -56,22 +56,30 @@ class Client {
         }
     }
 
-    static async getAll(companyId, assignedAdminId) {
+    static async getAll(companyId, assignedAdminId, pagination = {}) {
+        const { limit, offset, search, clientType } = pagination;
+
         let query = `
             SELECT c.*, u.name, u.email, u.phone, u.role, u.status as auth_status,
             (SELECT COUNT(*) FROM orders o WHERE o.company_id = c.id AND LOWER(o.status) NOT IN ('completed', 'cancelled', 'project_converted')) AS orders
-            FROM clients c 
+            FROM clients c
             JOIN users u ON c.user_id = u.id
             WHERE c.deleted_at IS NULL
         `;
         const params = [];
 
+        // Filter by client_type (Personal vs SaaS)
+        if (clientType) {
+            query += ' AND c.client_type = ?';
+            params.push(clientType);
+        }
+
         // Filtering Logic
         if (assignedAdminId !== undefined) {
              if (assignedAdminId === null) {
-                 // Super Admin: See ALL (no filter)
+                 // Super Admin: See ALL (no filter by admin)
              } else {
-                 // Operations Admin: STRICTOR - Only their own clients
+                 // Operations Admin: Only their own clients
                  query += ' AND c.assigned_admin_id = ?';
                  params.push(assignedAdminId);
              }
@@ -79,7 +87,7 @@ class Client {
 
         if (companyId !== undefined) {
             if (companyId === null) {
-                // If companyId is null and assignedAdminId is not set, we see all non-SaaS or all (depending on role handled above)
+                // Super Admin global view - no company filter
             } else {
                 // Tenant view: Return their specifically managed end-users/customers
                 query += ' AND (c.company_id = ? OR c.id = ?)';
@@ -87,8 +95,25 @@ class Client {
             }
         }
 
+        // Search logic
+        if (search) {
+            query += ' AND (u.name LIKE ? OR u.email LIKE ? OR c.business_name LIKE ?)';
+            const searchPattern = `%${search}%`;
+            params.push(searchPattern, searchPattern, searchPattern);
+        }
+
+        // Get total count BEFORE applying limit/offset
+        const [countResult] = await db.execute(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
+        const total = countResult[0].total;
+
+        // Apply Pagination
+        if (limit !== undefined && offset !== undefined) {
+            query += ' LIMIT ? OFFSET ?';
+            params.push(limit, offset);
+        }
+
         const [rows] = await db.execute(query, params);
-        return rows;
+        return { rows, total };
     }
 
     static async getByUserId(userId) {

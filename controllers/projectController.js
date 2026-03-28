@@ -1,10 +1,13 @@
 const Project = require('../models/projectModel');
+const { getPaginationParams, formatPaginatedResponse } = require('../utils/pagination');
 
 const getProjects = async (req, res) => {
     try {
+        const { page, limit, offset } = getPaginationParams(req.query);
+        const { search } = req.query;
         const companyId = req.user.role === 'super_admin' ? null : req.user.companyId;
-        const projects = await Project.getAll(companyId);
-        res.json({ success: true, data: projects });
+        const { rows, total } = await Project.getAll(companyId, { limit, offset, search });
+        res.json(formatPaginatedResponse(rows, total, page, limit));
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

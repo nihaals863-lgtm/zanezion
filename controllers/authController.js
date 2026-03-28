@@ -80,10 +80,11 @@ const loginUser = async (req, res) => {
                 if (roles.length > 0) {
                     const roleId = roles[0].id;
                     const [perms] = await db.execute(`
-                        SELECT m.*, rmp.can_view, rmp.can_add, rmp.can_edit, rmp.can_delete 
-                        FROM menus m 
-                        JOIN role_menu_permissions rmp ON m.id = rmp.menu_id 
+                        SELECT m.*, rmp.can_view, rmp.can_add, rmp.can_edit, rmp.can_delete
+                        FROM menus m
+                        JOIN role_menu_permissions rmp ON m.id = rmp.menu_id
                         WHERE rmp.role_id = ?
+                        ORDER BY m.sort_order ASC
                     `, [roleId]);
 
                     menuPermissions = perms
@@ -93,6 +94,7 @@ const loginUser = async (req, res) => {
                             name: p.name,
                             path: p.path,
                             icon: p.icon,
+                            sort_order: p.sort_order || 0,
                             can_view: !!p.can_view,
                             can_add: !!p.can_add,
                             can_edit: !!p.can_edit,

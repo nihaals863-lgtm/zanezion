@@ -40,28 +40,54 @@ class Event {
             location = null,
             event_date = null,
             client_id = null,
-            manager_id = null
+            manager_id = null,
+            company_id = null,
+            status = 'planned',
+            guest_count = 0,
+            planner_name = null,
+            special_notes = null,
+            mood_board_url = null
         } = data;
         const [result] = await db.execute(
-            'INSERT INTO events (name, description, location, event_date, client_id, manager_id, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [name, description, location, event_date, client_id, manager_id, 'planned']
+            `INSERT INTO events (name, description, location, event_date, client_id, manager_id, company_id, status, guest_count, planner_name, special_notes, mood_board_url)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [name, description, location, event_date, client_id, manager_id, company_id, status, guest_count, planner_name, special_notes, mood_board_url]
         );
         return result.insertId;
     }
 
     static async getById(id) {
-        const [rows] = await db.execute('SELECT e.*, c.business_name as client_name, u.name as manager_name FROM events e LEFT JOIN clients c ON e.client_id = c.id LEFT JOIN users u ON e.manager_id = u.id WHERE e.id = ?', [id]);
+        const [rows] = await db.execute(
+            `SELECT e.*, c.business_name as client_name, u.name as manager_name
+             FROM events e
+             LEFT JOIN clients c ON e.client_id = c.id
+             LEFT JOIN users u ON e.manager_id = u.id
+             WHERE e.id = ?`, [id]
+        );
         return rows[0] || null;
     }
 
-    static async getAll(companyId) {
-        let query = 'SELECT e.*, c.business_name as client_name, u.name as manager_name FROM events e LEFT JOIN clients c ON e.client_id = c.id LEFT JOIN users u ON e.manager_id = u.id';
-        const params = [];
-        if (companyId) {
-            query += ' WHERE e.client_id = ?';
-            params.push(companyId);
-        }
-        const [rows] = await db.execute(query, params);
+    static async getAll(userId) {
+        // Each user sees ONLY events they created (manager_id = their user ID)
+        const query = `SELECT e.*, c.business_name as client_name, u.name as manager_name
+                     FROM events e
+                     LEFT JOIN clients c ON e.client_id = c.id
+                     LEFT JOIN users u ON e.manager_id = u.id
+                     WHERE e.manager_id = ?
+                     ORDER BY e.created_at DESC`;
+        const [rows] = await db.execute(query, [userId]);
+        return rows;
+    }
+
+    // Super Admin can see ALL events across tenants (for analytics/oversight only)
+    static async getAllGlobal() {
+        const [rows] = await db.execute(
+            `SELECT e.*, c.business_name as client_name, u.name as manager_name
+             FROM events e
+             LEFT JOIN clients c ON e.client_id = c.id
+             LEFT JOIN users u ON e.manager_id = u.id
+             ORDER BY e.created_at DESC`
+        );
         return rows;
     }
 
@@ -73,11 +99,16 @@ class Event {
             event_date = null,
             client_id = null,
             manager_id = null,
-            status = null
+            status = null,
+            guest_count = 0,
+            planner_name = null,
+            special_notes = null,
+            mood_board_url = null
         } = data;
         const [result] = await db.execute(
-            'UPDATE events SET name = ?, description = ?, location = ?, event_date = ?, client_id = ?, manager_id = ?, status = ? WHERE id = ?',
-            [name, description, location, event_date, client_id, manager_id, status, id]
+            `UPDATE events SET name = ?, description = ?, location = ?, event_date = ?, client_id = ?, manager_id = ?, status = ?, guest_count = ?, planner_name = ?, special_notes = ?, mood_board_url = ?
+             WHERE id = ?`,
+            [name, description, location, event_date, client_id, manager_id, status, guest_count, planner_name, special_notes, mood_board_url, id]
         );
         return result.affectedRows > 0;
     }

@@ -2,14 +2,20 @@ const Shift = require('../models/shiftModel');
 const Assignment = require('../models/assignmentModel');
 const LeaveRequest = require('../models/leaveModel');
 const User = require('../models/userModel');
+const { getPaginationParams, formatPaginatedResponse } = require('../utils/pagination');
 
 // @desc    Get all staff (Admin)
 // @route   GET /api/staff
 // @access  Private (Admin)
 const getAllStaff = async (req, res) => {
     try {
-        const staff = await User.findAll();
-        res.json({ success: true, data: staff });
+        const { page, limit, offset } = getPaginationParams(req.query);
+        const { status, role: roleFilter, search } = req.query;
+        const userRole = (req.user.role || '').toLowerCase().replace(/[\s_]+/g, '');
+        const isGlobalRole = ['superadmin', 'operations', 'concierge', 'conciergemanager'].includes(userRole);
+        const companyId = isGlobalRole ? null : req.user.companyId;
+        const { rows: staff, total } = await User.findAll(companyId, { limit, offset, status, role: roleFilter, search });
+        res.json(formatPaginatedResponse(staff, total, page, limit));
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

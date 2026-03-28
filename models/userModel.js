@@ -77,11 +77,18 @@ class User {
         return rows[0];
     }
 
-    static async findAll(companyId) {
+    static async findAll(companyId, pagination = {}) {
+        const { limit, offset, search, status, role } = pagination;
+
         let query = `
-            SELECT u.*, sd.*, u.id as id 
-            FROM users u 
-            LEFT JOIN staff_details sd ON u.id = sd.user_id 
+            SELECT u.id, u.name, u.email, u.phone, u.role, u.status, u.company_id, u.avatar_url, u.created_at,
+                   sd.employment_status, sd.is_salaried, sd.vacation_balance,
+                   sd.bank_name, sd.account_number, sd.routing_number, sd.payment_method as pay_method,
+                   sd.nib_number, sd.birthday,
+                   sd.has_passport, sd.has_license, sd.has_nib_doc, sd.has_resume, sd.has_profile_pic,
+                   sd.is_available
+            FROM users u
+            LEFT JOIN staff_details sd ON u.id = sd.user_id
             WHERE u.deleted_at IS NULL AND u.role NOT IN ('Vendor', 'SaaS Client', 'saas_client')
         `;
         const params = [];
@@ -95,8 +102,34 @@ class User {
             }
         }
 
+        if (status) {
+            query += ' AND u.status = ?';
+            params.push(status);
+        }
+
+        if (role) {
+            query += ' AND u.role = ?';
+            params.push(role);
+        }
+
+        if (search) {
+            query += ' AND (u.name LIKE ? OR u.email LIKE ?)';
+            const searchPattern = `%${search}%`;
+            params.push(searchPattern, searchPattern);
+        }
+
+        // Get total count BEFORE applying limit/offset
+        const [countResult] = await db.execute(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
+        const total = countResult[0].total;
+
+        // Apply Pagination
+        if (limit !== undefined && offset !== undefined) {
+            query += ' LIMIT ? OFFSET ?';
+            params.push(limit, offset);
+        }
+
         const [rows] = await db.execute(query, params);
-        return rows;
+        return { rows, total };
     }
 
     static async getOperationsAdmins() {

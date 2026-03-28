@@ -1,6 +1,7 @@
 const SubscriptionRequest = require('../models/saasModel');
 const Client = require('../models/clientModel');
 const crypto = require('crypto');
+const { getPaginationParams, formatPaginatedResponse } = require('../utils/pagination');
 
 const saasController = {
     submitRequest: async (req, res, next) => {
@@ -18,6 +19,8 @@ const saasController = {
 
     getRequests: async (req, res, next) => {
         try {
+            const { page, limit, offset } = getPaginationParams(req.query);
+            const { search } = req.query;
             const role = req.user.role.toLowerCase().replace(/\s/g, '');
             let filterId = undefined; // Default: No filtering
 
@@ -25,8 +28,8 @@ const saasController = {
                 filterId = req.user.id;
             }
 
-            const requests = await SubscriptionRequest.getAll(filterId);
-            res.json({ success: true, data: requests });
+            const { rows, total } = await SubscriptionRequest.getAll(filterId, { limit, offset, search });
+            res.json(formatPaginatedResponse(rows, total, page, limit));
         } catch (error) {
             next(error);
         }

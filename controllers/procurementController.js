@@ -1,4 +1,5 @@
 const { PurchaseOrder, PurchaseRequest, Quote } = require('../models/procurementModel');
+const { getPaginationParams, formatPaginatedResponse } = require('../utils/pagination');
 
 // @desc    Create new Purchase Order
 // @route   POST /api/procurement/po
@@ -19,8 +20,10 @@ const createPO = async (req, res) => {
 // @access  Private
 const getAllPOs = async (req, res) => {
     try {
-        const pos = await PurchaseOrder.getAll(req.user.companyId);
-        res.json({ success: true, data: pos });
+        const { page, limit, offset } = getPaginationParams(req.query);
+        const { search } = req.query;
+        const { rows, total } = await PurchaseOrder.getAll(req.user.companyId, { limit, offset, search });
+        res.json(formatPaginatedResponse(rows, total, page, limit));
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -93,9 +96,11 @@ const createRequest = async (req, res) => {
 
 const getRequests = async (req, res) => {
     try {
+        const { page, limit, offset } = getPaginationParams(req.query);
+        const { search } = req.query;
         const companyId = req.user.role === 'super_admin' ? null : req.user.companyId;
-        const requests = await PurchaseRequest.getAll(companyId);
-        res.json({ success: true, data: requests });
+        const { rows, total } = await PurchaseRequest.getAll(companyId, { limit, offset, search });
+        res.json(formatPaginatedResponse(rows, total, page, limit));
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -136,9 +141,11 @@ const createQuote = async (req, res) => {
 
 const getQuotes = async (req, res) => {
     try {
+        const { page, limit, offset } = getPaginationParams(req.query);
+        const { search } = req.query;
         const companyId = req.user.role === 'super_admin' ? null : req.user.companyId;
-        const quotes = await Quote.getAll(companyId);
-        res.json({ success: true, data: quotes });
+        const { rows, total } = await Quote.getAll(companyId, { limit, offset, search });
+        res.json(formatPaginatedResponse(rows, total, page, limit));
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
