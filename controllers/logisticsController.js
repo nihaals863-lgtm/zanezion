@@ -91,10 +91,16 @@ const updateDeliveryStatus = async (req, res) => {
 
 const deleteDelivery = async (req, res) => {
     try {
-        const success = await Delivery.delete(req.params.id);
+        const id = parseInt(req.params.id, 10);
+        if (isNaN(id)) {
+            return res.status(400).json({ success: false, message: `Invalid delivery ID: ${req.params.id}` });
+        }
+        const success = await Delivery.delete(id);
         if (success) {
             res.json({ success: true, message: 'Delivery deleted' });
         } else {
+            // ID not found in deliveries table - log for debugging
+            console.error(`Delete delivery failed: ID ${id} not found in deliveries table (raw param: ${req.params.id})`);
             res.status(404).json({ success: false, message: 'Delivery not found' });
         }
     } catch (error) {

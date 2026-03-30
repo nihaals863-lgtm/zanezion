@@ -92,18 +92,8 @@ class PurchaseOrder {
             query += ` WHERE ` + conditions.join(' AND ');
         }
 
-        // Get total count
-        const [countResult] = await db.query(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
-        const total = countResult[0].total;
-
-        query += ` ORDER BY po.created_at DESC`;
-
-        if (limit !== undefined && offset !== undefined) {
-            query += ` LIMIT ? OFFSET ?`;
-            params.push(Number(limit), Number(offset));
-        }
-
-        const [rows] = await db.query(query, params);
+        const [rows] = await db.query(query + ' ORDER BY po.created_at DESC', params);
+        const total = rows.length;
         const results = [];
         for (const row of rows) {
             const [itemRows] = await db.query('SELECT * FROM purchase_order_items WHERE po_id = ?', [row.id]);

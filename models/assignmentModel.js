@@ -2,24 +2,24 @@ const db = require('../config/db');
 
 class Assignment {
     static async create(data) {
-        const { 
-            assigneeId, 
-            task, 
-            priority = 'Medium', 
-            location = null, 
-            missionType = null, 
-            passengerName = null, 
-            pickupTime = null, 
-            dropLocation = null, 
-            luggage = null, 
-            goodsDetails = null, 
-            weight = null, 
-            pickupLocation = null, 
-            deliveryLocation = null 
+        const {
+            assigneeId,
+            task,
+            priority = 'Medium',
+            location = null,
+            missionType = null,
+            passengerName = null,
+            pickupTime = null,
+            dropLocation = null,
+            luggage = null,
+            goodsDetails = null,
+            weight = null,
+            pickupLocation = null,
+            deliveryLocation = null
         } = data;
         const [result] = await db.query(
             'INSERT INTO staff_assignments (assignee_id, task_name, priority, status, description) VALUES (?, ?, ?, ?, ?)',
-            [assigneeId, task, priority, 'Pending', JSON.stringify({ 
+            [assigneeId ? Number(assigneeId) : null, task, priority, 'Pending', JSON.stringify({
                 location, missionType, passengerName, pickupTime, 
                 dropLocation, luggage, goodsDetails, weight, 
                 pickupLocation, deliveryLocation 

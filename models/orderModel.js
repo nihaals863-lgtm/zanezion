@@ -123,19 +123,9 @@ class Order {
             params.push(searchPattern, searchPattern, searchPattern);
         }
 
-        // Get total count BEFORE applying limit/offset
-        const [countResult] = await db.query(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
-        const total = countResult[0].total;
+        const [rows] = await db.query(query + ' ORDER BY o.created_at DESC', params);
+        const total = rows.length;
 
-        query += ' ORDER BY o.created_at DESC';
-
-        // Apply Pagination
-        if (limit !== undefined && offset !== undefined) {
-            query += ' LIMIT ? OFFSET ?';
-            params.push(Number(limit), Number(offset));
-        }
-
-        const [rows] = await db.query(query, params);
         const results = [];
         for (const row of rows) {
             const [items] = await db.query(
@@ -302,9 +292,10 @@ class Order {
 class Project {
     static async create(projectData) {
         const { name, description, manager_id, start_date, end_date, location, status, company_id, order_id } = projectData;
+        if (!name || !name.trim()) throw new Error('Project name is required');
         const [result] = await db.query(
             'INSERT INTO projects (name, description, manager_id, start_date, end_date, location, status, company_id, order_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [name || null, description || null, manager_id || null, start_date || null, end_date || null, location || null, status || 'planned', company_id || null, order_id || null]
+            [name.trim(), description || null, manager_id || null, start_date || null, end_date || null, location || null, status || 'planned', company_id || null, order_id || null]
         );
         return result.insertId;
     }
@@ -328,10 +319,10 @@ class Project {
     }
 
     static async getAllProjects(companyId, pagination = {}) {
-        const { limit, offset } = pagination;
+        const { limit, offset, search, status } = pagination;
 
         let query = `
-            SELECT p.*, COALESCE(c.business_name, 'Direct Project') AS client_name 
+            SELECT p.*, COALESCE(c.business_name, 'Direct Project') AS client_name
             FROM projects p
             LEFT JOIN clients c ON p.company_id = c.id
             WHERE p.deleted_at IS NULL
@@ -342,20 +333,19 @@ class Project {
             params.push(companyId);
         }
 
-        // Get total count BEFORE applying limit/offset
-        const [countResult] = await db.query(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
-        const total = countResult[0].total;
-
-        query += ' ORDER BY p.created_at DESC';
-
-        // Apply Pagination
-        if (limit !== undefined && offset !== undefined) {
-            query += ' LIMIT ? OFFSET ?';
-            params.push(Number(limit), Number(offset));
+        if (search) {
+            query += ' AND (p.name LIKE ? OR p.description LIKE ? OR COALESCE(c.business_name, \'\') LIKE ? OR p.location LIKE ? OR CAST(p.id AS CHAR) LIKE ?)';
+            const searchPattern = `%${search}%`;
+            params.push(searchPattern, searchPattern, searchPattern, searchPattern, searchPattern);
         }
 
-        const [rows] = await db.query(query, params);
-        return { rows, total };
+        if (status) {
+            query += ' AND p.status = ?';
+            params.push(status);
+        }
+
+        const [rows] = await db.query(query + ' ORDER BY p.created_at DESC', params);
+        return { rows, total: rows.length };
     }
 
     static async getById(id) {

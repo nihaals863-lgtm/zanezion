@@ -49,7 +49,8 @@ const createClient = async (req, res) => {
     try {
         const payload = {
             ...req.body,
-            company_id: req.body.companyId || req.body.company_id || (req.user ? (['super_admin', 'superadmin'].includes(req.user.role) ? null : req.user.companyId) : null)
+            company_id: req.body.companyId || req.body.company_id || (req.user ? (['super_admin', 'superadmin'].includes(req.user.role) ? null : req.user.companyId) : null),
+            assigned_admin_id: req.body.assigned_admin_id || (req.user && req.user.role === 'operations' ? req.user.id : null)
         };
         // If it's a SaaS client and no password is given, we generate one
         const isSaaS = payload.client_type === 'SaaS' || payload.clientType === 'SaaS';

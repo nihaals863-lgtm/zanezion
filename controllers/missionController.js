@@ -79,6 +79,10 @@ const assignMissionDriver = async (req, res) => {
 const updateMissionStatus = async (req, res) => {
     try {
         const { status } = req.body;
+        const validStatuses = ['pending', 'assigned', 'in_progress', 'en_route', 'completed', 'failed', 'cancelled'];
+        if (!status || !validStatuses.includes(status)) {
+            return res.status(400).json({ success: false, message: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
+        }
         const success = await Mission.updateStatus(req.params.id, status);
 
         if (success) {

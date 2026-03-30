@@ -103,7 +103,8 @@ const getProjects = async (req, res) => {
     try {
         const { page, limit, offset } = getPaginationParams(req.query);
         const companyId = req.user.role === 'super_admin' ? null : req.user.companyId;
-        const { rows: projects, total } = await Project.getAllProjects(companyId, { limit, offset });
+        const { search, status } = req.query;
+        const { rows: projects, total } = await Project.getAllProjects(companyId, { limit, offset, search, status });
 
         res.json(formatPaginatedResponse(projects, total, page, limit));
     } catch (error) {

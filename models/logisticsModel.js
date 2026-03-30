@@ -134,18 +134,8 @@ class Delivery {
             params.push(company_id);
         }
 
-        // Get total count
-        const [countResult] = await db.query(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
-        const total = countResult[0].total;
-
-        // Apply pagination
-        if (limit !== undefined && offset !== undefined) {
-            query += ' LIMIT ? OFFSET ?';
-            params.push(Number(limit), Number(offset));
-        }
-
-        const [rows] = await db.query(query, params);
-        return { rows, total };
+        const [rows] = await db.query(query + ' ORDER BY d.created_at DESC', params);
+        return { rows, total: rows.length };
     }
 
     static async getById(id, company_id = null) {
@@ -181,7 +171,13 @@ class Delivery {
         const [deliveryRows] = await db.query('SELECT vehicle_id FROM deliveries WHERE id = ?', [id]);
         const vehicleId = deliveryRows[0]?.vehicle_id;
 
-        await db.query('DELETE FROM delivery_items WHERE delivery_id = ?', [id]);
+        // delivery_items table may not exist in older schemas
+        try {
+            await db.query('DELETE FROM delivery_items WHERE delivery_id = ?', [id]);
+        } catch (e) {
+            console.log('delivery_items cleanup skipped:', e.message);
+        }
+
         const [result] = await db.query('DELETE FROM deliveries WHERE id = ?', [id]);
 
         if (vehicleId) {

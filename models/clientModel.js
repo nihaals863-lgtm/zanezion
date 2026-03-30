@@ -102,18 +102,8 @@ class Client {
             params.push(searchPattern, searchPattern, searchPattern);
         }
 
-        // Get total count BEFORE applying limit/offset
-        const [countResult] = await db.query(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
-        const total = countResult[0].total;
-
-        // Apply Pagination
-        if (limit !== undefined && offset !== undefined) {
-            query += ' LIMIT ? OFFSET ?';
-            params.push(Number(limit), Number(offset));
-        }
-
-        const [rows] = await db.query(query, params);
-        return { rows, total };
+        const [rows] = await db.query(query + ' ORDER BY c.created_at DESC', params);
+        return { rows, total: rows.length };
     }
 
     static async getByUserId(userId) {
