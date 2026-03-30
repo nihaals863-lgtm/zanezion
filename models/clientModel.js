@@ -19,14 +19,14 @@ class Client {
 
             // 1. Create the user (Core Auth)
             const roleName = client_type === 'SaaS' ? 'SaaS Client' : 'Client';
-            const [userResult] = await connection.execute(
+            const [userResult] = await connection.query(
                 `INSERT INTO users (name, email, phone, password, role, status) VALUES (?, ?, ?, ?, ?, ?)`,
                 [name, email, phone || null, hashedPassword, roleName, 'Active']
             );
             const userId = userResult.insertId;
 
             // 2. Create the client record
-            const [clientResult] = await connection.execute(
+            const [clientResult] = await connection.query(
                 `INSERT INTO clients (
                     user_id, address, location, source, 
                     client_type, plan, billing_cycle, payment_method, 
@@ -43,7 +43,7 @@ class Client {
 
             // 3. Link the user to the company if it's the first user of the company
             if (client_type === 'SaaS') {
-                await connection.execute('UPDATE users SET company_id = ? WHERE id = ?', [clientResult.insertId, userId]);
+                await connection.query('UPDATE users SET company_id = ? WHERE id = ?', [clientResult.insertId, userId]);
             }
 
             await connection.commit();
@@ -103,7 +103,7 @@ class Client {
         }
 
         // Get total count BEFORE applying limit/offset
-        const [countResult] = await db.execute(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
+        const [countResult] = await db.query(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
         const total = countResult[0].total;
 
         // Apply Pagination
@@ -112,12 +112,12 @@ class Client {
             params.push(Number(limit), Number(offset));
         }
 
-        const [rows] = await db.execute(query, params);
+        const [rows] = await db.query(query, params);
         return { rows, total };
     }
 
     static async getByUserId(userId) {
-        const [rows] = await db.execute(`
+        const [rows] = await db.query(`
             SELECT c.*, u.name, u.email, u.phone, u.role, u.status as auth_status,
             (SELECT COUNT(*) FROM orders o WHERE o.company_id = c.id AND LOWER(o.status) NOT IN ('completed', 'cancelled', 'project_converted')) AS orders
             FROM clients c 
@@ -128,7 +128,7 @@ class Client {
     }
 
     static async getById(id) {
-        const [rows] = await db.execute(`
+        const [rows] = await db.query(`
             SELECT c.*, u.name, u.email, u.phone, u.role, u.status as auth_status,
             (SELECT COUNT(*) FROM orders o WHERE o.company_id = c.id AND LOWER(o.status) NOT IN ('completed', 'cancelled', 'project_converted')) AS orders
             FROM clients c 
@@ -167,18 +167,18 @@ class Client {
             });
 
             // Get user_id first
-            const [clientRows] = await connection.execute('SELECT user_id FROM clients WHERE id = ?', [id]);
+            const [clientRows] = await connection.query('SELECT user_id FROM clients WHERE id = ?', [id]);
             if (clientRows.length === 0) throw new Error('Client not found');
             const userId = clientRows[0].user_id;
 
             if (Object.keys(userData).length > 0) {
                 const fields = Object.keys(userData).map(key => `${key} = ?`).join(', ');
-                await connection.execute(`UPDATE users SET ${fields} WHERE id = ?`, [...Object.values(userData), userId]);
+                await connection.query(`UPDATE users SET ${fields} WHERE id = ?`, [...Object.values(userData), userId]);
             }
 
             if (Object.keys(clientData).length > 0) {
                 const fields = Object.keys(clientData).map(key => `${key} = ?`).join(', ');
-                await connection.execute(`UPDATE clients SET ${fields} WHERE id = ?`, [...Object.values(clientData), id]);
+                await connection.query(`UPDATE clients SET ${fields} WHERE id = ?`, [...Object.values(clientData), id]);
             }
 
             await connection.commit();
@@ -197,15 +197,15 @@ class Client {
             await connection.beginTransaction();
 
             // Get user_id
-            const [clientRows] = await connection.execute('SELECT user_id FROM clients WHERE id = ?', [id]);
+            const [clientRows] = await connection.query('SELECT user_id FROM clients WHERE id = ?', [id]);
             if (clientRows.length > 0) {
                 const userId = clientRows[0].user_id;
                 // Soft delete user
-                await connection.execute('UPDATE users SET deleted_at = CURRENT_TIMESTAMP, status = "inactive" WHERE id = ?', [userId]);
+                await connection.query('UPDATE users SET deleted_at = CURRENT_TIMESTAMP, status = "inactive" WHERE id = ?', [userId]);
             }
 
             // Soft delete client
-            const [result] = await connection.execute('UPDATE clients SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [id]);
+            const [result] = await connection.query('UPDATE clients SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [id]);
 
             await connection.commit();
             return result.affectedRows > 0;

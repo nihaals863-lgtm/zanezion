@@ -2,7 +2,7 @@ const db = require('../config/db');
 
 class AccessPlan {
     static async getAll() {
-        const [rows] = await db.execute('SELECT * FROM access_plans ORDER BY price ASC');
+        const [rows] = await db.query('SELECT * FROM access_plans ORDER BY price ASC');
         // Parse JSON features for each row
         return rows.map(row => ({
             ...row,
@@ -12,7 +12,7 @@ class AccessPlan {
     }
 
     static async getById(id) {
-        const [rows] = await db.execute('SELECT * FROM access_plans WHERE id = ?', [id]);
+        const [rows] = await db.query('SELECT * FROM access_plans WHERE id = ?', [id]);
         if (rows.length === 0) return null;
         const row = rows[0];
         return {
@@ -30,7 +30,7 @@ class AccessPlan {
         
         const finalYearlyPrice = yearlyPrice || yearly_price;
 
-        const [result] = await db.execute(
+        const [result] = await db.query(
             'INSERT INTO access_plans (id, name, tier, price, period, yearly_price, description, features, commitment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [planId, name, tier || null, price || null, period || null, finalYearlyPrice || null, description || null, JSON.stringify(features || []), commitment || null]
         );
@@ -40,7 +40,7 @@ class AccessPlan {
     static async update(id, data) {
         const { name, tier, price, period, yearly_price, yearlyPrice, description, features, commitment } = data;
         const finalYearlyPrice = yearlyPrice || yearly_price;
-        const [result] = await db.execute(
+        const [result] = await db.query(
             'UPDATE access_plans SET name = ?, tier = ?, price = ?, period = ?, yearly_price = ?, description = ?, features = ?, commitment = ? WHERE id = ?',
             [name, tier || null, price || null, period || null, finalYearlyPrice || null, description || null, JSON.stringify(features || []), commitment || null, id]
         );
@@ -48,7 +48,7 @@ class AccessPlan {
     }
 
     static async delete(id) {
-        const [result] = await db.execute('DELETE FROM access_plans WHERE id = ?', [id]);
+        const [result] = await db.query('DELETE FROM access_plans WHERE id = ?', [id]);
         return result.affectedRows > 0;
     }
 }

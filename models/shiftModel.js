@@ -2,7 +2,7 @@ const db = require('../config/db');
 
 class Shift {
     static async clockIn(userId, location = null) {
-        const [result] = await db.execute(
+        const [result] = await db.query(
             'INSERT INTO shifts (user_id, clock_in, status, location) VALUES (?, CURRENT_TIMESTAMP, "Active", ?)',
             [userId, location]
         );
@@ -10,7 +10,7 @@ class Shift {
     }
 
     static async clockOut(userId) {
-        const [activeShift] = await db.execute(
+        const [activeShift] = await db.query(
             'SELECT id, clock_in FROM shifts WHERE user_id = ? AND status = "Active" ORDER BY clock_in DESC LIMIT 1',
             [userId]
         );
@@ -22,7 +22,7 @@ class Shift {
         const clockOut = new Date();
         const durationHours = (clockOut - clockIn) / (1000 * 60 * 60);
 
-        await db.execute(
+        await db.query(
             'UPDATE shifts SET clock_out = CURRENT_TIMESTAMP, duration_hours = ?, status = "Completed" WHERE id = ?',
             [durationHours.toFixed(2), shiftId]
         );
@@ -31,12 +31,12 @@ class Shift {
     }
 
     static async getByUserId(userId) {
-        const [rows] = await db.execute('SELECT * FROM shifts WHERE user_id = ? ORDER BY clock_in DESC', [userId]);
+        const [rows] = await db.query('SELECT * FROM shifts WHERE user_id = ? ORDER BY clock_in DESC', [userId]);
         return rows;
     }
 
     static async getActiveShifts() {
-        const [rows] = await db.execute(
+        const [rows] = await db.query(
             'SELECT s.*, u.name as user_name FROM shifts s JOIN users u ON s.user_id = u.id WHERE s.status = "Active"'
         );
         return rows;

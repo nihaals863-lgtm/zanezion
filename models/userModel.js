@@ -20,7 +20,7 @@ class User {
             await connection.beginTransaction();
 
             // 1. Create User (Core Auth)
-            const [userResult] = await connection.execute(
+            const [userResult] = await connection.query(
                 `INSERT INTO users (name, email, phone, password, role, status, company_id) VALUES (?, ?, ?, ?, ?, ?, ?)`,
                 [name, email, phone || null, hashedPassword, role || 'operations', status || 'Active', userData.company_id || null]
             );
@@ -28,7 +28,7 @@ class User {
 
             // 2. Create Staff Details (if role is not Client/Vendor)
             if (!['Client', 'Vendor'].includes(role)) {
-                await connection.execute(
+                await connection.query(
                     `INSERT INTO staff_details (
                         user_id, employment_status, is_salaried, vacation_balance, 
                         bank_name, account_number, routing_number, payment_method, nib_number, birthday,
@@ -58,7 +58,7 @@ class User {
     }
 
     static async findByEmail(email) {
-        const [rows] = await db.execute(`
+        const [rows] = await db.query(`
             SELECT u.*, sd.*, u.id as id 
             FROM users u 
             LEFT JOIN staff_details sd ON u.id = sd.user_id 
@@ -68,7 +68,7 @@ class User {
     }
 
     static async findById(id) {
-        const [rows] = await db.execute(`
+        const [rows] = await db.query(`
             SELECT u.*, sd.*, u.id as id 
             FROM users u 
             LEFT JOIN staff_details sd ON u.id = sd.user_id 
@@ -119,7 +119,7 @@ class User {
         }
 
         // Get total count BEFORE applying limit/offset
-        const [countResult] = await db.execute(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
+        const [countResult] = await db.query(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
         const total = countResult[0].total;
 
         // Apply Pagination
@@ -128,12 +128,12 @@ class User {
             params.push(Number(limit), Number(offset));
         }
 
-        const [rows] = await db.execute(query, params);
+        const [rows] = await db.query(query, params);
         return { rows, total };
     }
 
     static async getOperationsAdmins() {
-        const [rows] = await db.execute(`
+        const [rows] = await db.query(`
             SELECT id, name 
             FROM users 
             WHERE role = 'operations' AND status = 'Active' AND deleted_at IS NULL
@@ -161,7 +161,7 @@ class User {
 
             // 1. Manually check email uniqueness if email is being updated
             if (updateData.email) {
-                const [existing] = await connection.execute(
+                const [existing] = await connection.query(
                     'SELECT id FROM users WHERE email = ? AND id != ? AND deleted_at IS NULL',
                     [updateData.email, id]
                 );
@@ -188,12 +188,12 @@ class User {
 
             if (Object.keys(userData).length > 0) {
                 const fields = Object.keys(userData).map(key => `${key} = ?`).join(', ');
-                await connection.execute(`UPDATE users SET ${fields} WHERE id = ?`, [...Object.values(userData), id]);
+                await connection.query(`UPDATE users SET ${fields} WHERE id = ?`, [...Object.values(userData), id]);
             }
 
             if (Object.keys(staffData).length > 0) {
                 const fields = Object.keys(staffData).map(key => `${key} = ?`).join(', ');
-                await connection.execute(`UPDATE staff_details SET ${fields} WHERE user_id = ?`, [...Object.values(staffData), id]);
+                await connection.query(`UPDATE staff_details SET ${fields} WHERE user_id = ?`, [...Object.values(staffData), id]);
             }
 
             await connection.commit();
@@ -207,7 +207,7 @@ class User {
     }
 
     static async softDelete(id) {
-        const [result] = await db.execute('UPDATE users SET deleted_at = CURRENT_TIMESTAMP, status = "inactive" WHERE id = ?', [id]);
+        const [result] = await db.query('UPDATE users SET deleted_at = CURRENT_TIMESTAMP, status = "inactive" WHERE id = ?', [id]);
         return result.affectedRows > 0;
     }
 }

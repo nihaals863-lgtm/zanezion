@@ -3,7 +3,7 @@ const db = require('../config/db');
 class Invoice {
     static async create(data) {
         const { order_id, client_id, amount, due_date } = data;
-        const [result] = await db.execute(
+        const [result] = await db.query(
             'INSERT INTO invoices (order_id, client_id, amount, due_date, status) VALUES (?, ?, ?, ?, ?)',
             [order_id, client_id, amount, due_date, 'unpaid']
         );
@@ -17,17 +17,17 @@ class Invoice {
             query += ' WHERE c.id = ? OR o.company_id = ?';
             params.push(companyId, companyId);
         }
-        const [rows] = await db.execute(query, params);
+        const [rows] = await db.query(query, params);
         return rows;
     }
 
     static async getById(id) {
-        const [rows] = await db.execute('SELECT i.*, c.business_name as client_name, o.id as order_id FROM invoices i JOIN clients c ON i.client_id = c.id JOIN orders o ON i.order_id = o.id WHERE i.id = ?', [id]);
+        const [rows] = await db.query('SELECT i.*, c.business_name as client_name, o.id as order_id FROM invoices i JOIN clients c ON i.client_id = c.id JOIN orders o ON i.order_id = o.id WHERE i.id = ?', [id]);
         return rows[0];
     }
 
     static async updateStatus(id, status) {
-        await db.execute('UPDATE invoices SET status = ? WHERE id = ?', [status, id]);
+        await db.query('UPDATE invoices SET status = ? WHERE id = ?', [status, id]);
     }
 
     static async update(id, data) {
@@ -40,32 +40,32 @@ class Invoice {
             }
         });
         values.push(id);
-        await db.execute(`UPDATE invoices SET ${fields.join(', ')} WHERE id = ?`, values);
+        await db.query(`UPDATE invoices SET ${fields.join(', ')} WHERE id = ?`, values);
     }
 
     static async delete(id) {
         // Delete associated payments first to satisfy foreign key constraint
-        await db.execute('DELETE FROM payments WHERE invoice_id = ?', [id]);
-        await db.execute('DELETE FROM invoices WHERE id = ?', [id]);
+        await db.query('DELETE FROM payments WHERE invoice_id = ?', [id]);
+        await db.query('DELETE FROM invoices WHERE id = ?', [id]);
     }
 }
 
 class Transaction {
     static async create(data) {
         const { invoice_id, amount, payment_method, transaction_id } = data;
-        const [result] = await db.execute(
+        const [result] = await db.query(
             'INSERT INTO payments (invoice_id, amount, payment_method, transaction_id) VALUES (?, ?, ?, ?)',
             [invoice_id, amount, payment_method, transaction_id]
         );
 
         // Update invoice status if fully paid (simple check)
-        const [invoice] = await db.execute('SELECT amount FROM invoices WHERE id = ?', [invoice_id]);
-        const [payments] = await db.execute('SELECT SUM(amount) as total FROM payments WHERE invoice_id = ?', [invoice_id]);
+        const [invoice] = await db.query('SELECT amount FROM invoices WHERE id = ?', [invoice_id]);
+        const [payments] = await db.query('SELECT SUM(amount) as total FROM payments WHERE invoice_id = ?', [invoice_id]);
         
         if (payments[0].total >= invoice[0].amount) {
-            await db.execute('UPDATE invoices SET status = ? WHERE id = ?', ['paid', invoice_id]);
+            await db.query('UPDATE invoices SET status = ? WHERE id = ?', ['paid', invoice_id]);
         } else {
-            await db.execute('UPDATE invoices SET status = ? WHERE id = ?', ['partially_paid', invoice_id]);
+            await db.query('UPDATE invoices SET status = ? WHERE id = ?', ['partially_paid', invoice_id]);
         }
 
         return result.insertId;
@@ -80,7 +80,7 @@ class Payroll {
             savings_deduction, birthday_club, net_amount, 
             payment_date, method 
         } = data;
-        const [result] = await db.execute(
+        const [result] = await db.query(
             `INSERT INTO payroll (
                 user_id, base_salary, bonus, 
                 nib_deduction, medical_deduction, pension_deduction, 
@@ -98,7 +98,7 @@ class Payroll {
     }
 
     static async getByUserId(userId) {
-        const [rows] = await db.execute('SELECT * FROM payroll WHERE user_id = ? ORDER BY created_at DESC', [userId]);
+        const [rows] = await db.query('SELECT * FROM payroll WHERE user_id = ? ORDER BY created_at DESC', [userId]);
         return rows;
     }
 
@@ -114,7 +114,7 @@ class Payroll {
             params.push(companyId);
         }
         query += ' ORDER BY p.created_at DESC';
-        const [rows] = await db.execute(query, params);
+        const [rows] = await db.query(query, params);
         return rows;
     }
 
@@ -137,11 +137,11 @@ class Payroll {
         if (fields.length === 0) return;
 
         values.push(id);
-        await db.execute(`UPDATE payroll SET ${fields.join(', ')} WHERE id = ?`, values);
+        await db.query(`UPDATE payroll SET ${fields.join(', ')} WHERE id = ?`, values);
     }
 
     static async delete(id) {
-        await db.execute('DELETE FROM payroll WHERE id = ?', [id]);
+        await db.query('DELETE FROM payroll WHERE id = ?', [id]);
     }
 }
 

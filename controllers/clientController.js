@@ -142,7 +142,7 @@ const deleteClient = async (req, res) => {
 const getClientMenuPermissions = async (req, res) => {
     try {
         const clientId = req.params.id;
-        const [rows] = await db.execute(`
+        const [rows] = await db.query(`
             SELECT m.id, m.name, m.path, m.icon,
                    COALESCE(cmp.can_view, 0) as can_view,
                    COALESCE(cmp.can_add, 0) as can_add,
@@ -170,10 +170,10 @@ const saveClientMenuPermissions = async (req, res) => {
         try {
             await connection.beginTransaction();
             // Clear existing
-            await connection.execute('DELETE FROM client_menu_permissions WHERE client_id = ?', [clientId]);
+            await connection.query('DELETE FROM client_menu_permissions WHERE client_id = ?', [clientId]);
             // Insert new
             for (const p of permissions) {
-                await connection.execute(
+                await connection.query(
                     `INSERT INTO client_menu_permissions (client_id, menu_id, can_view, can_add, can_edit, can_delete) VALUES (?, ?, ?, ?, ?, ?)`,
                     [clientId, p.menu_id, p.can_view ? 1 : 0, p.can_add ? 1 : 0, p.can_edit ? 1 : 0, p.can_delete ? 1 : 0]
                 );

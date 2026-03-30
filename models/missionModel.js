@@ -9,28 +9,28 @@ class Mission {
             const { mission_type, event_date, notes, destination_type } = missionData;
 
             // Create mission
-            const [result] = await connection.execute(
+            const [result] = await connection.query(
                 'INSERT INTO missions (order_id, mission_type, event_date, notes, destination_type, status) VALUES (?, ?, ?, ?, ?, ?)',
                 [orderId, mission_type || 'Logistics', event_date || null, notes || null, destination_type || 'Domestic', 'pending']
             );
             const missionId = result.insertId;
 
             // Fetch order items to convert to mission items
-            const [orderItems] = await connection.execute(
+            const [orderItems] = await connection.query(
                 'SELECT * FROM order_items WHERE order_id = ?',
                 [orderId]
             );
 
             // Insert mission items
             for (const item of orderItems) {
-                await connection.execute(
+                await connection.query(
                     'INSERT INTO mission_items (mission_id, item_name, qty) VALUES (?, ?, ?)',
                     [missionId, item.name, item.quantity]
                 );
             }
 
             // Update order status
-            await connection.execute('UPDATE orders SET status = ? WHERE id = ?', ['in_progress', orderId]);
+            await connection.query('UPDATE orders SET status = ? WHERE id = ?', ['in_progress', orderId]);
 
             await connection.commit();
             return missionId;
@@ -43,7 +43,7 @@ class Mission {
     }
 
     static async getAll() {
-        const [rows] = await db.execute(`
+        const [rows] = await db.query(`
             SELECT m.*, o.total_amount, u.name as driver_name, v.plate_number, c.business_name as client_name
             FROM missions m 
             JOIN orders o ON m.order_id = o.id 
@@ -55,7 +55,7 @@ class Mission {
 
         const results = [];
         for (const row of rows) {
-            const [items] = await db.execute(
+            const [items] = await db.query(
                 'SELECT * FROM mission_items WHERE mission_id = ?',
                 [row.id]
             );
@@ -69,7 +69,7 @@ class Mission {
     }
 
     static async getById(id) {
-        const [rows] = await db.execute(`
+        const [rows] = await db.query(`
             SELECT m.*, o.total_amount, u.name as driver_name, v.plate_number, c.business_name as client_name
             FROM missions m 
             JOIN orders o ON m.order_id = o.id 
@@ -81,7 +81,7 @@ class Mission {
 
         if (!rows[0]) return null;
 
-        const [items] = await db.execute(
+        const [items] = await db.query(
             'SELECT * FROM mission_items WHERE mission_id = ?',
             [id]
         );
@@ -98,27 +98,27 @@ class Mission {
             await connection.beginTransaction();
 
             // Get order_id for this mission to sync with deliveries
-            const [missionRows] = await connection.execute('SELECT order_id FROM missions WHERE id = ?', [id]);
+            const [missionRows] = await connection.query('SELECT order_id FROM missions WHERE id = ?', [id]);
             if (!missionRows[0]) {
                 throw new Error('Mission not found');
             }
             const orderId = missionRows[0].order_id;
 
-            const [result] = await connection.execute(
+            const [result] = await connection.query(
                 'UPDATE missions SET assigned_driver = ?, vehicle_id = ?, status = ? WHERE id = ?',
                 [driverId, vehicleId || null, 'assigned', id]
             );
 
             // Also manage the deliveries execution table representation using order_id
-            const [existingDelivery] = await connection.execute('SELECT id FROM deliveries WHERE order_id = ?', [orderId]);
+            const [existingDelivery] = await connection.query('SELECT id FROM deliveries WHERE order_id = ?', [orderId]);
 
             if (existingDelivery.length > 0) {
-                await connection.execute(
+                await connection.query(
                     'UPDATE deliveries SET driver_id = ?, vehicle_id = ?, status = ? WHERE order_id = ?',
                     [driverId, vehicleId || null, 'accepted', orderId]
                 );
             } else {
-                await connection.execute(
+                await connection.query(
                     'INSERT INTO deliveries (order_id, driver_id, vehicle_id, status) VALUES (?, ?, ?, ?)',
                     [orderId, driverId, vehicleId || null, 'accepted']
                 );
@@ -144,17 +144,17 @@ class Mission {
 
         const fields = Object.keys(data).map(key => `${key} = ?`).join(', ');
         const values = [...Object.values(data), id];
-        const [result] = await db.execute(`UPDATE missions SET ${fields} WHERE id = ?`, values);
+        const [result] = await db.query(`UPDATE missions SET ${fields} WHERE id = ?`, values);
         return result.affectedRows > 0;
     }
 
     static async updateStatus(id, status) {
-        const [result] = await db.execute('UPDATE missions SET status = ? WHERE id = ?', [status, id]);
+        const [result] = await db.query('UPDATE missions SET status = ? WHERE id = ?', [status, id]);
         return result.affectedRows > 0;
     }
 
     static async softDelete(id) {
-        const [result] = await db.execute('UPDATE missions SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [id]);
+        const [result] = await db.query('UPDATE missions SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [id]);
         return result.affectedRows > 0;
     }
 }

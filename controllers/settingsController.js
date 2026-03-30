@@ -18,7 +18,7 @@ const getSystemSettings = async (req, res) => {
 
 const getAllPermissions = async (req, res) => {
     try {
-        const [permissions] = await db.execute('SELECT * FROM permissions');
+        const [permissions] = await db.query('SELECT * FROM permissions');
         res.json({ success: true, data: permissions });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -33,11 +33,11 @@ const updateRolePermissions = async (req, res) => {
         await connection.beginTransaction();
         
         // Remove existing permissions
-        await connection.execute('DELETE FROM role_permissions WHERE role_id = ?', [roleId]);
+        await connection.query('DELETE FROM role_permissions WHERE role_id = ?', [roleId]);
         
         // Add new permissions
         for (const permId of permissions) {
-            await connection.execute('INSERT INTO role_permissions (role_id, permission_id) VALUES (?, ?)', [roleId, permId]);
+            await connection.query('INSERT INTO role_permissions (role_id, permission_id) VALUES (?, ?)', [roleId, permId]);
         }
         
         await connection.commit();

@@ -38,13 +38,13 @@ class Order {
             if (clientId) {
                 // Determine if clientId represents a users.id or clients.id
                 // typically, we assume it's a clients.id coming from the frontend dropdown
-                const [clientRows] = await connection.execute(
+                const [clientRows] = await connection.query(
                     'SELECT user_id FROM clients WHERE id = ? LIMIT 1', [clientId]
                 );
                 if (clientRows.length > 0) {
                     userClientId = clientRows[0].user_id;
                 } else { // It might already be a user id, let's verify
-                    const [userRows] = await connection.execute(
+                    const [userRows] = await connection.query(
                         'SELECT id FROM users WHERE id = ? LIMIT 1', [clientId]
                     );
                     if (userRows.length > 0) userClientId = userRows[0].id;
@@ -52,11 +52,11 @@ class Order {
             }
 
             if (!userClientId) {
-                const [fallbackRows] = await connection.execute('SELECT id FROM users LIMIT 1');
+                const [fallbackRows] = await connection.query('SELECT id FROM users LIMIT 1');
                 userClientId = fallbackRows.length > 0 ? fallbackRows[0].id : 1;
             }
 
-            const [orderResult] = await connection.execute(
+            const [orderResult] = await connection.query(
                 'INSERT INTO orders (client_id, company_id, vendor_id, type, notes, total_amount, status, due_date, order_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 [userClientId, companyId || null, vendorId || null, type, notes, totalAmount, status, dueDate, orderDate]
             );
@@ -71,7 +71,7 @@ class Order {
                     const unit_price = item.unit_price || item.price || 0;
                     const totalPrice = quantity * unit_price;
 
-                    await connection.execute(
+                    await connection.query(
                         'INSERT INTO order_items (order_id, item_id, name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?)',
                         [orderId, (typeof item_id === 'number' ? item_id : null), name, quantity, unit_price, totalPrice]
                     );
@@ -124,7 +124,7 @@ class Order {
         }
 
         // Get total count BEFORE applying limit/offset
-        const [countResult] = await db.execute(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
+        const [countResult] = await db.query(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
         const total = countResult[0].total;
 
         query += ' ORDER BY o.created_at DESC';
@@ -135,10 +135,10 @@ class Order {
             params.push(Number(limit), Number(offset));
         }
 
-        const [rows] = await db.execute(query, params);
+        const [rows] = await db.query(query, params);
         const results = [];
         for (const row of rows) {
-            const [items] = await db.execute(
+            const [items] = await db.query(
                 `SELECT oi.*, COALESCE(ii.name, oi.name) as item_name 
                  FROM order_items oi 
                  LEFT JOIN inventory_items ii ON oi.item_id = ii.id 
@@ -164,7 +164,7 @@ class Order {
     }
 
     static async getById(id) {
-        const [rows] = await db.execute(
+        const [rows] = await db.query(
             `SELECT o.*, COALESCE(c.business_name, u.name) AS client_name, c.client_type, v.name AS vendor_name 
              FROM orders o 
              LEFT JOIN clients c ON o.company_id = c.id 
@@ -175,7 +175,7 @@ class Order {
         if (!rows[0]) return null;
         const row = rows[0];
 
-        const [items] = await db.execute(
+        const [items] = await db.query(
             `SELECT oi.*, COALESCE(ii.name, oi.name) as item_name 
              FROM order_items oi 
              LEFT JOIN inventory_items ii ON oi.item_id = ii.id 
@@ -205,7 +205,7 @@ class Order {
             'project_converted': 'project_converted', 'delivered': 'completed'
         };
         const normalizedStatus = statusMap[(status || '').toLowerCase()] || status;
-        const [result] = await db.execute('UPDATE orders SET status = ? WHERE id = ?', [normalizedStatus, id]);
+        const [result] = await db.query('UPDATE orders SET status = ? WHERE id = ?', [normalizedStatus, id]);
         return result.affectedRows > 0;
     }
 
@@ -255,12 +255,12 @@ class Order {
             if (Object.keys(data).length > 0) {
                 const fields = Object.keys(data).map(key => `${key} = ?`).join(', ');
                 const values = [...Object.values(data), id];
-                await connection.execute(`UPDATE orders SET ${fields} WHERE id = ?`, values);
+                await connection.query(`UPDATE orders SET ${fields} WHERE id = ?`, values);
             }
 
             // Handle Item Updates if passed: simpler to clear and re-insert given current schema
             if (updateData.items && Array.isArray(updateData.items) && updateData.items.length > 0) {
-                await connection.execute('DELETE FROM order_items WHERE order_id = ?', [id]);
+                await connection.query('DELETE FROM order_items WHERE order_id = ?', [id]);
                 for (const item of updateData.items) {
                     const name = item.name || item.product || null;
                     const quantity = item.quantity || item.qty || 0;
@@ -272,7 +272,7 @@ class Order {
                     if (itemId && (typeof itemId === 'string' && isNaN(parseInt(itemId)))) {
                         itemId = null;
                     }
-                    await connection.execute(
+                    await connection.query(
                         'INSERT INTO order_items (order_id, item_id, name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?)',
                         [id, itemId, name, quantity, unit_price, totalPrice]
                     );
@@ -290,7 +290,7 @@ class Order {
     }
 
     static async softDelete(id) {
-        const [result] = await db.execute('UPDATE orders SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [id]);
+        const [result] = await db.query('UPDATE orders SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [id]);
         return result.affectedRows > 0;
     }
 
@@ -302,7 +302,7 @@ class Order {
 class Project {
     static async create(projectData) {
         const { name, description, manager_id, start_date, end_date, location, status, company_id, order_id } = projectData;
-        const [result] = await db.execute(
+        const [result] = await db.query(
             'INSERT INTO projects (name, description, manager_id, start_date, end_date, location, status, company_id, order_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [name || null, description || null, manager_id || null, start_date || null, end_date || null, location || null, status || 'planned', company_id || null, order_id || null]
         );
@@ -313,16 +313,16 @@ class Project {
         const { name, description, manager_id, start_date, end_date, location } = projectData;
 
         // Get company_id from order
-        const [orders] = await db.execute('SELECT company_id FROM orders WHERE id = ?', [orderId]);
+        const [orders] = await db.query('SELECT company_id FROM orders WHERE id = ?', [orderId]);
         const company_id = orders[0] ? orders[0].company_id : null;
 
-        const [result] = await db.execute(
+        const [result] = await db.query(
             'INSERT INTO projects (order_id, company_id, name, description, manager_id, start_date, end_date, location, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [orderId, company_id || null, name || null, description || null, manager_id || null, start_date || null, end_date || null, location || null, 'planned']
         );
 
         // Update order status
-        await db.execute('UPDATE orders SET status = ? WHERE id = ?', ['project_converted', orderId]);
+        await db.query('UPDATE orders SET status = ? WHERE id = ?', ['project_converted', orderId]);
 
         return result.insertId;
     }
@@ -343,7 +343,7 @@ class Project {
         }
 
         // Get total count BEFORE applying limit/offset
-        const [countResult] = await db.execute(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
+        const [countResult] = await db.query(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
         const total = countResult[0].total;
 
         query += ' ORDER BY p.created_at DESC';
@@ -354,12 +354,12 @@ class Project {
             params.push(Number(limit), Number(offset));
         }
 
-        const [rows] = await db.execute(query, params);
+        const [rows] = await db.query(query, params);
         return { rows, total };
     }
 
     static async getById(id) {
-        const [rows] = await db.execute(`
+        const [rows] = await db.query(`
             SELECT p.*, u.name as manager_name, COALESCE(c.business_name, 'Direct Project') AS client_name 
             FROM projects p 
             LEFT JOIN users u ON p.manager_id = u.id 
@@ -379,12 +379,12 @@ class Project {
 
         const fields = Object.keys(data).map(key => `${key} = ?`).join(', ');
         const values = [...Object.values(data), id];
-        const [result] = await db.execute(`UPDATE projects SET ${fields} WHERE id = ?`, values);
+        const [result] = await db.query(`UPDATE projects SET ${fields} WHERE id = ?`, values);
         return result.affectedRows > 0;
     }
 
     static async softDelete(id) {
-        const [result] = await db.execute('UPDATE projects SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [id]);
+        const [result] = await db.query('UPDATE projects SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [id]);
         return result.affectedRows > 0;
     }
 }

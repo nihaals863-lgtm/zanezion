@@ -20,7 +20,7 @@ class InventoryItem {
             data.company_id || null
         ];
  
-        const [result] = await db.execute(
+        const [result] = await db.query(
             'INSERT INTO inventory_items (name, sku, description, category, unit, quantity, threshold, warehouse_id, vendor_id, price, inventory_type, client_id, company_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             params
         );
@@ -48,7 +48,7 @@ class InventoryItem {
              }
         }
 
-        const [rows] = await db.execute(query, params);
+        const [rows] = await db.query(query, params);
         return rows.map(i => ({
             ...i,
             quantity: Number(i.quantity || 0),
@@ -57,7 +57,7 @@ class InventoryItem {
     }
 
     static async getById(id) {
-        const [rows] = await db.execute(`
+        const [rows] = await db.query(`
             SELECT i.*, w.name as warehouse_name, v.name as vendor_name, c.business_name as client_name
             FROM inventory_items i
             LEFT JOIN warehouses w ON i.warehouse_id = w.id
@@ -85,7 +85,7 @@ class InventoryItem {
 
         const fields = Object.keys(data).map(key => `${key} = ?`).join(', ');
         const values = [...Object.values(data), id];
-        const [result] = await db.execute(`UPDATE inventory_items SET ${fields} WHERE id = ?`, values);
+        const [result] = await db.query(`UPDATE inventory_items SET ${fields} WHERE id = ?`, values);
         return result.affectedRows > 0;
     }
 
@@ -96,23 +96,23 @@ class InventoryItem {
 
             // Update quantity
             const operator = ['in', 'entry'].includes(type) ? '+' : '-';
-            await connection.execute(
+            await connection.query(
                 `UPDATE inventory_items SET quantity = quantity ${operator} ? WHERE id = ?`,
                 [qty, id]
             );
 
             // Update status based on threshold
-            const [item] = await connection.execute('SELECT quantity, threshold FROM inventory_items WHERE id = ?', [id]);
+            const [item] = await connection.query('SELECT quantity, threshold FROM inventory_items WHERE id = ?', [id]);
             const newQty = item[0].quantity;
             const threshold = item[0].threshold;
             let status = 'in_stock';
             if (newQty <= 0) status = 'out_of_stock';
             else if (newQty < threshold) status = 'low_stock';
 
-            await connection.execute('UPDATE inventory_items SET status = ? WHERE id = ?', [status, id]);
+            await connection.query('UPDATE inventory_items SET status = ? WHERE id = ?', [status, id]);
 
             // Log stock movement
-            await connection.execute(
+            await connection.query(
                 'INSERT INTO stock_movements (item_id, quantity, type, reference_type, reference_id, user_id) VALUES (?, ?, ?, ?, ?, ?)',
                 [id, qty, type, reference_type, reference_id, user_id]
             );
@@ -127,7 +127,7 @@ class InventoryItem {
         }
     }
     static async softDelete(id) {
-        const [result] = await db.execute('UPDATE inventory_items SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [id]);
+        const [result] = await db.query('UPDATE inventory_items SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [id]);
         return result.affectedRows > 0;
     }
 }

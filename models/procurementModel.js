@@ -20,7 +20,7 @@ class PurchaseOrder {
             if (vendorIdRaw && !isNaN(Number(vendorIdRaw))) {
                 resolvedVendorId = Number(vendorIdRaw);
             } else if (vendorName) {
-                const [vendorRows] = await connection.execute(
+                const [vendorRows] = await connection.query(
                     'SELECT id FROM vendors WHERE name = ? LIMIT 1',
                     [vendorName]
                 );
@@ -31,7 +31,7 @@ class PurchaseOrder {
 
             // If still no vendor found, try a broader search
             if (!resolvedVendorId && vendorIdRaw) {
-                const [vendorRows] = await connection.execute(
+                const [vendorRows] = await connection.query(
                     'SELECT id FROM vendors LIMIT 1'
                 );
                 if (vendorRows.length > 0) {
@@ -43,7 +43,7 @@ class PurchaseOrder {
                 throw new Error('Could not resolve vendor. Please ensure at least one vendor exists in the system.');
             }
 
-            const [result] = await connection.execute(
+            const [result] = await connection.query(
                 'INSERT INTO purchase_orders (vendor_id, vendor_name, total, status, date, company_id, approval_status) VALUES (?, ?, ?, ?, ?, ?, ?)',
                 [resolvedVendorId, vendorName || null, total, 'Pending', date, companyId, 'Pending']
             );
@@ -52,7 +52,7 @@ class PurchaseOrder {
 
             if (items && Array.isArray(items)) {
                 for (const item of items) {
-                    await connection.execute(
+                    await connection.query(
                         'INSERT INTO purchase_order_items (po_id, name, ordered_qty, received_qty, price, category) VALUES (?, ?, ?, ?, ?, ?)',
                         [poId, item.name || null, item.quantity || item.orderedQty || item.qty || 0, 0, item.unit_price || item.price || 0, item.category || null]
                     );
@@ -93,7 +93,7 @@ class PurchaseOrder {
         }
 
         // Get total count
-        const [countResult] = await db.execute(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
+        const [countResult] = await db.query(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
         const total = countResult[0].total;
 
         query += ` ORDER BY po.created_at DESC`;
@@ -103,10 +103,10 @@ class PurchaseOrder {
             params.push(Number(limit), Number(offset));
         }
 
-        const [rows] = await db.execute(query, params);
+        const [rows] = await db.query(query, params);
         const results = [];
         for (const row of rows) {
-            const [itemRows] = await db.execute('SELECT * FROM purchase_order_items WHERE po_id = ?', [row.id]);
+            const [itemRows] = await db.query('SELECT * FROM purchase_order_items WHERE po_id = ?', [row.id]);
             results.push({
                 id: row.id,
                 vendorId: row.vendor_id,
@@ -142,11 +142,11 @@ class PurchaseOrder {
             params.push(companyId);
         }
 
-        const [poRows] = await db.execute(query, params);
+        const [poRows] = await db.query(query, params);
         if (poRows.length === 0) return null;
         const row = poRows[0];
 
-        const [itemRows] = await db.execute('SELECT * FROM purchase_order_items WHERE po_id = ?', [id]);
+        const [itemRows] = await db.query('SELECT * FROM purchase_order_items WHERE po_id = ?', [id]);
         return {
             id: row.id,
             vendorId: row.vendor_id,
@@ -175,21 +175,21 @@ class PurchaseOrder {
 
             for (const item of receivedItems) {
                 // Update received_qty in PO items
-                await connection.execute(
+                await connection.query(
                     'UPDATE purchase_order_items SET received_qty = received_qty + ? WHERE po_id = ? AND id = ?',
                     [item.receivedNow, poId, item.id]
                 );
 
                 if (item.receivedNow > 0) {
                     // Check if item exists in inventory
-                    const [existing] = await connection.execute('SELECT id FROM inventory WHERE name = ? LIMIT 1', [item.name || '']);
+                    const [existing] = await connection.query('SELECT id FROM inventory WHERE name = ? LIMIT 1', [item.name || '']);
                     if (existing.length > 0) {
-                        await connection.execute('UPDATE inventory SET quantity = quantity + ?, status = "in_stock" WHERE id = ?', [item.receivedNow, existing[0].id]);
+                        await connection.query('UPDATE inventory SET quantity = quantity + ?, status = "in_stock" WHERE id = ?', [item.receivedNow, existing[0].id]);
                     } else {
                         // Insert new item
                         const category = item.category || 'Procurement';
                         const price = item.price || 0;
-                        await connection.execute(
+                        await connection.query(
                             'INSERT INTO inventory (name, category, price, quantity, status) VALUES (?, ?, ?, ?, ?)',
                             [item.name || 'Unknown Item', category, price, item.receivedNow, 'in_stock']
                         );
@@ -198,7 +198,7 @@ class PurchaseOrder {
             }
 
             // Check if PO is fully received
-            const [items] = await connection.execute('SELECT ordered_qty, received_qty FROM purchase_order_items WHERE po_id = ?', [poId]);
+            const [items] = await connection.query('SELECT ordered_qty, received_qty FROM purchase_order_items WHERE po_id = ?', [poId]);
             const isFullyReceived = items.every(i => i.received_qty >= i.ordered_qty);
             const isPartiallyReceived = items.some(i => i.received_qty > 0);
 
@@ -206,7 +206,7 @@ class PurchaseOrder {
             if (isFullyReceived) status = 'Completed';
             else if (isPartiallyReceived) status = 'Partially Received';
 
-            await connection.execute('UPDATE purchase_orders SET status = ? WHERE id = ?', [status, poId]);
+            await connection.query('UPDATE purchase_orders SET status = ? WHERE id = ?', [status, poId]);
 
             await connection.commit();
             return true;
@@ -245,7 +245,7 @@ class PurchaseOrder {
             values.push(companyId);
         }
 
-        const [result] = await db.execute(query, values);
+        const [result] = await db.query(query, values);
         return result.affectedRows > 0;
     }
 }
@@ -254,7 +254,7 @@ class PurchaseRequest {
     static async create(data) {
         const { requester, items, priority, status, department, clientId, companyId, company_id } = data;
         const cid = companyId || company_id || null;
-        const [result] = await db.execute(
+        const [result] = await db.query(
             'INSERT INTO purchase_requests (requester, items, priority, status, department, client_id, company_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
             [requester, JSON.stringify(items), priority || 'Normal', status || 'Pending', department || null, clientId || null, cid]
         );
@@ -283,7 +283,7 @@ class PurchaseRequest {
         }
 
         // Get total count
-        const [countResult] = await db.execute(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
+        const [countResult] = await db.query(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
         const total = countResult[0].total;
 
         query += ' ORDER BY created_at DESC';
@@ -293,7 +293,7 @@ class PurchaseRequest {
             params.push(Number(limit), Number(offset));
         }
 
-        const [rows] = await db.execute(query, params);
+        const [rows] = await db.query(query, params);
         return { 
             rows: rows.map(r => ({ ...r, items: JSON.parse(r.items || '[]') })), 
             total 
@@ -307,7 +307,7 @@ class PurchaseRequest {
             query += ' AND company_id = ?';
             params.push(company_id);
         }
-        const [rows] = await db.execute(query, params);
+        const [rows] = await db.query(query, params);
         if (rows.length === 0) return null;
         return { ...rows[0], items: JSON.parse(rows[0].items || '[]') };
     }
@@ -327,12 +327,12 @@ class PurchaseRequest {
 
         const fields = Object.keys(data).map(key => `${key} = ?`).join(', ');
         const values = [...Object.values(data), id];
-        const [result] = await db.execute(`UPDATE purchase_requests SET ${fields} WHERE id = ?`, values);
+        const [result] = await db.query(`UPDATE purchase_requests SET ${fields} WHERE id = ?`, values);
         return result.affectedRows > 0;
     }
 
     static async delete(id) {
-        const [result] = await db.execute('DELETE FROM purchase_requests WHERE id = ?', [id]);
+        const [result] = await db.query('DELETE FROM purchase_requests WHERE id = ?', [id]);
         return result.affectedRows > 0;
     }
 }
@@ -341,7 +341,7 @@ class Quote {
     static async create(data) {
         const { vendorId, items, total, status, leadTime, validity, companyId, company_id } = data;
         const cid = companyId || company_id || null;
-        const [result] = await db.execute(
+        const [result] = await db.query(
             'INSERT INTO quotes (vendor_id, items, total, status, lead_time, validity, company_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
             [vendorId, JSON.stringify(items), total, status || 'Active', leadTime || null, validity || null, cid]
         );
@@ -370,7 +370,7 @@ class Quote {
         }
 
         // Get total count
-        const [countResult] = await db.execute(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
+        const [countResult] = await db.query(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
         const total = countResult[0].total;
 
         query += ' ORDER BY created_at DESC';
@@ -380,7 +380,7 @@ class Quote {
             params.push(Number(limit), Number(offset));
         }
 
-        const [rows] = await db.execute(query, params);
+        const [rows] = await db.query(query, params);
         return { 
             rows: rows.map(r => ({ ...r, items: JSON.parse(r.items || '[]') })), 
             total 
@@ -394,7 +394,7 @@ class Quote {
             query += ' AND company_id = ?';
             params.push(company_id);
         }
-        const [rows] = await db.execute(query, params);
+        const [rows] = await db.query(query, params);
         if (rows.length === 0) return null;
         return { ...rows[0], items: JSON.parse(rows[0].items || '[]') };
     }
@@ -414,12 +414,12 @@ class Quote {
 
         const fields = Object.keys(data).map(key => `${key} = ?`).join(', ');
         const values = [...Object.values(data), id];
-        const [result] = await db.execute(`UPDATE quotes SET ${fields} WHERE id = ?`, values);
+        const [result] = await db.query(`UPDATE quotes SET ${fields} WHERE id = ?`, values);
         return result.affectedRows > 0;
     }
 
     static async delete(id) {
-        const [result] = await db.execute('DELETE FROM quotes WHERE id = ?', [id]);
+        const [result] = await db.query('DELETE FROM quotes WHERE id = ?', [id]);
         return result.affectedRows > 0;
     }
 }

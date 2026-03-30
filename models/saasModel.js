@@ -7,7 +7,7 @@ class SubscriptionRequest {
             requirements, propertyType, throughput, addOn, assignedAdminId
         } = requestData;
 
-        const [result] = await db.execute(
+        const [result] = await db.query(
             `INSERT INTO subscription_requests (
                 client_name, plan, contact, email, country, 
                 requirements, property_type, throughput, add_on, status, assigned_admin_id
@@ -47,7 +47,7 @@ class SubscriptionRequest {
         }
 
         // Get total count
-        const [countResult] = await db.execute(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
+        const [countResult] = await db.query(`SELECT COUNT(*) as total FROM (${query}) AS subquery`, params);
         const total = countResult[0].total;
 
         query += ' ORDER BY created_at DESC';
@@ -57,12 +57,12 @@ class SubscriptionRequest {
             params.push(Number(limit), Number(offset));
         }
 
-        const [rows] = await db.execute(query, params);
+        const [rows] = await db.query(query, params);
         return { rows, total };
     }
 
     static async updateStatus(id, status) {
-        const [result] = await db.execute(
+        const [result] = await db.query(
             `UPDATE subscription_requests SET status = ? WHERE id = ?`,
             [status, id]
         );
@@ -70,7 +70,7 @@ class SubscriptionRequest {
     }
 
     static async delete(id) {
-        const [result] = await db.execute(
+        const [result] = await db.query(
             `DELETE FROM subscription_requests WHERE id = ?`,
             [id]
         );
@@ -78,7 +78,7 @@ class SubscriptionRequest {
     }
 
     static async getById(id) {
-        const [rows] = await db.execute(
+        const [rows] = await db.query(
             `SELECT * FROM subscription_requests WHERE id = ?`,
             [id]
         );

@@ -32,7 +32,7 @@ const authorizeAction = (menuName, action) => {
                 return next();
             }
 
-            const [rows] = await db.execute(
+            const [rows] = await db.query(
                 `SELECT rmp.${action} as allowed
                  FROM role_menu_permissions rmp
                  JOIN roles r ON r.id = rmp.role_id

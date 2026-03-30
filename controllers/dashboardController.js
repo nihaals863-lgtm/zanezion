@@ -13,10 +13,10 @@ const getDashboardStats = async (req, res) => {
         
         if (role === 'super_admin' || role === 'superadmin') {
             // GLOBAL HQ Stats: Exclude SaaS metrics for Super Admin per user request
-            const [globalUsers] = await db.execute('SELECT COUNT(*) as count FROM users WHERE status = "active"');
-            const [globalRevenue] = await db.execute('SELECT SUM(amount) as total FROM invoices WHERE status = "Paid"');
-            const [globalOrders] = await db.execute('SELECT COUNT(*) as count FROM orders WHERE status != "cancelled"');
-            const [globalInventory] = await db.execute('SELECT SUM(price * quantity) as total FROM inventory_items WHERE deleted_at IS NULL');
+            const [globalUsers] = await db.query('SELECT COUNT(*) as count FROM users WHERE status = "active"');
+            const [globalRevenue] = await db.query('SELECT SUM(amount) as total FROM invoices WHERE status = "Paid"');
+            const [globalOrders] = await db.query('SELECT COUNT(*) as count FROM orders WHERE status != "cancelled"');
+            const [globalInventory] = await db.query('SELECT SUM(price * quantity) as total FROM inventory_items WHERE deleted_at IS NULL');
 
             stats = {
                 activeTenants: 0, // Super Admin doesn't see SaaS clients
@@ -29,9 +29,9 @@ const getDashboardStats = async (req, res) => {
 
         } else if (normalizedRole === 'operations') {
             // Operations Admin: See only assigned SaaS metrics
-            const [myClients] = await db.execute('SELECT COUNT(*) as count FROM clients WHERE assigned_admin_id = ? OR assigned_admin_id IS NULL', [req.user.id]);
-            const [myRequests] = await db.execute('SELECT COUNT(*) as count FROM subscription_requests WHERE status = "Pending" AND (assigned_admin_id = ? OR assigned_admin_id IS NULL)', [req.user.id]);
-            const [opsOrders] = await db.execute(`SELECT COUNT(*) as count FROM orders WHERE status != "cancelled"`); // Ops can see all non-tenant orders or change to assigned? User didn't specify orders yet, mainly clients.
+            const [myClients] = await db.query('SELECT COUNT(*) as count FROM clients WHERE assigned_admin_id = ? OR assigned_admin_id IS NULL', [req.user.id]);
+            const [myRequests] = await db.query('SELECT COUNT(*) as count FROM subscription_requests WHERE status = "Pending" AND (assigned_admin_id = ? OR assigned_admin_id IS NULL)', [req.user.id]);
+            const [opsOrders] = await db.query(`SELECT COUNT(*) as count FROM orders WHERE status != "cancelled"`); // Ops can see all non-tenant orders or change to assigned? User didn't specify orders yet, mainly clients.
             
             stats = {
                 activeTenants: myClients[0].count,

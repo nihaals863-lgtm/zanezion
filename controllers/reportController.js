@@ -15,7 +15,7 @@ const getFinancialReport = async (req, res) => {
             params.push(endDate);
         }
 
-        const [invoices] = await db.execute(query, params);
+        const [invoices] = await db.query(query, params);
         
         const totalRevenue = invoices.reduce((acc, inv) => acc + parseFloat(inv.amount || 0), 0);
         const totalPaid = invoices.filter(inv => inv.status === 'paid').reduce((acc, inv) => acc + parseFloat(inv.amount || 0), 0);
@@ -39,8 +39,8 @@ const getFinancialReport = async (req, res) => {
 
 const getInventoryReport = async (req, res) => {
     try {
-        const [items] = await db.execute('SELECT * FROM inventory_items');
-        const [movements] = await db.execute('SELECT * FROM stock_movements WHERE type = "adjustment"');
+        const [items] = await db.query('SELECT * FROM inventory_items');
+        const [movements] = await db.query('SELECT * FROM stock_movements WHERE type = "adjustment"');
         
         const totalValuation = items.reduce((acc, item) => acc + (parseFloat(item.price || 0) * item.quantity), 0);
         const lowStockItems = items.filter(item => item.quantity <= item.threshold);

@@ -76,10 +76,10 @@ const loginUser = async (req, res) => {
                 // Fetch menu permissions for the role - using the original normalized role for DB check
                 // RBAC: Fetch menu permissions based on role
                 const normalizedRoleName = normalizeRole(user.role);
-                const [roles] = await db.execute('SELECT id FROM roles WHERE name = ?', [normalizedRoleName]);
+                const [roles] = await db.query('SELECT id FROM roles WHERE name = ?', [normalizedRoleName]);
                 if (roles.length > 0) {
                     const roleId = roles[0].id;
-                    const [perms] = await db.execute(`
+                    const [perms] = await db.query(`
                         SELECT m.*, rmp.can_view, rmp.can_add, rmp.can_edit, rmp.can_delete
                         FROM menus m
                         JOIN role_menu_permissions rmp ON m.id = rmp.menu_id
@@ -314,7 +314,7 @@ const getPendingStaff = async (req, res) => {
             params.push(companyId);
         }
 
-        const [rows] = await db.execute(query, params);
+        const [rows] = await db.query(query, params);
         res.json({ success: true, data: rows });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

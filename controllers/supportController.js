@@ -40,7 +40,7 @@ const resolveCompanyId = async (user) => {
     if (user.companyId) return user.companyId;
     // Fallback: lookup from clients table by user_id
     try {
-        const [rows] = await db.execute('SELECT id FROM clients WHERE user_id = ? AND deleted_at IS NULL', [user.id]);
+        const [rows] = await db.query('SELECT id FROM clients WHERE user_id = ? AND deleted_at IS NULL', [user.id]);
         return rows.length > 0 ? rows[0].id : null;
     } catch { return null; }
 };
@@ -58,7 +58,7 @@ const getEvents = async (req, res) => {
 const getMyEvents = async (req, res) => {
     try {
         const userId = req.user.id;
-        const [events] = await db.execute(
+        const [events] = await db.query(
             `SELECT e.*, c.business_name as client_name, u.name as manager_name
              FROM events e
              LEFT JOIN clients c ON e.client_id = c.id

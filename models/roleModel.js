@@ -2,13 +2,13 @@ const db = require('../config/db');
 
 class Role {
     static async getAll() {
-        const [rows] = await db.execute('SELECT * FROM roles');
+        const [rows] = await db.query('SELECT * FROM roles');
         return rows;
     }
 
     static async getPermissions(roleId) {
         // Now using role_menu_permissions
-        const [rows] = await db.execute(
+        const [rows] = await db.query(
             `SELECT m.id, m.name, m.path, m.icon, rmp.can_view, rmp.can_add, rmp.can_edit, rmp.can_delete 
              FROM menus m
              LEFT JOIN role_menu_permissions rmp ON m.id = rmp.menu_id AND rmp.role_id = ?
@@ -19,17 +19,17 @@ class Role {
     }
 
     static async getRoleByName(roleName) {
-        const [rows] = await db.execute('SELECT * FROM roles WHERE name = ?', [roleName]);
+        const [rows] = await db.query('SELECT * FROM roles WHERE name = ?', [roleName]);
         return rows[0];
     }
 
     static async getAllMenus() {
-        const [rows] = await db.execute('SELECT * FROM menus ORDER BY sort_order ASC');
+        const [rows] = await db.query('SELECT * FROM menus ORDER BY sort_order ASC');
         return rows;
     }
 
     static async create(name, description) {
-        const [result] = await db.execute(
+        const [result] = await db.query(
             'INSERT INTO roles (name, description) VALUES (?, ?)',
             [name, description]
         );
@@ -42,11 +42,11 @@ class Role {
             await connection.beginTransaction();
 
             // 1. Get all valid menu IDs
-            const [validMenus] = await connection.execute('SELECT id FROM menus');
+            const [validMenus] = await connection.query('SELECT id FROM menus');
             const validMenuIds = new Set(validMenus.map(m => m.id));
 
             // 2. Clear existing for this role
-            await connection.execute('DELETE FROM role_menu_permissions WHERE role_id = ?', [roleId]);
+            await connection.query('DELETE FROM role_menu_permissions WHERE role_id = ?', [roleId]);
 
             // 3. Insert new permissions (filtered)
             for (const perm of menuPermissions) {
@@ -55,7 +55,7 @@ class Role {
                     continue;
                 }
 
-                await connection.execute(
+                await connection.query(
                     `INSERT INTO role_menu_permissions 
                     (role_id, menu_id, can_view, can_add, can_edit, can_delete) 
                     VALUES (?, ?, ?, ?, ?, ?)`,

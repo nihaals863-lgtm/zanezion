@@ -14,14 +14,14 @@ class Vendor {
             if (email && password) {
                 const salt = await bcrypt.genSalt(10);
                 const hashedPassword = await bcrypt.hash(password, salt);
-                const [userResult] = await connection.execute(
+                const [userResult] = await connection.query(
                     'INSERT INTO users (name, email, phone, password, role, status) VALUES (?, ?, ?, ?, ?, ?)',
                     [name, email, phone || null, hashedPassword, 'Vendor', 'Active']
                 );
                 userId = userResult.insertId;
             }
 
-            const [result] = await connection.execute(
+            const [result] = await connection.query(
                 'INSERT INTO vendors (user_id, name, contact_name, email, phone, address, category) VALUES (?, ?, ?, ?, ?, ?, ?)',
                 [userId, name || null, final_contact, email || null, phone || null, address || null, category || null]
             );
@@ -36,7 +36,7 @@ class Vendor {
         }
     }
     static async getByUserId(userId) {
-        const [rows] = await db.execute(`
+        const [rows] = await db.query(`
             SELECT v.*, u.role, u.status as auth_status
             FROM vendors v
             LEFT JOIN users u ON v.user_id = u.id
@@ -46,7 +46,7 @@ class Vendor {
     }
 
     static async getAll() {
-        const [rows] = await db.execute(`
+        const [rows] = await db.query(`
             SELECT v.*, u.role, u.status as auth_status
             FROM vendors v
             LEFT JOIN users u ON v.user_id = u.id
@@ -56,7 +56,7 @@ class Vendor {
     }
 
     static async getById(id) {
-        const [rows] = await db.execute(`
+        const [rows] = await db.query(`
             SELECT v.*, u.role, u.status as auth_status
             FROM vendors v
             LEFT JOIN users u ON v.user_id = u.id
@@ -92,17 +92,17 @@ class Vendor {
             });
 
             // Get user_id
-            const [vendorRows] = await connection.execute('SELECT user_id FROM vendors WHERE id = ?', [id]);
+            const [vendorRows] = await connection.query('SELECT user_id FROM vendors WHERE id = ?', [id]);
             const userId = vendorRows.length > 0 ? vendorRows[0].user_id : null;
 
             if (userId && Object.keys(userData).length > 0) {
                 const fields = Object.keys(userData).map(key => `${key} = ?`).join(', ');
-                await connection.execute(`UPDATE users SET ${fields} WHERE id = ?`, [...Object.values(userData), userId]);
+                await connection.query(`UPDATE users SET ${fields} WHERE id = ?`, [...Object.values(userData), userId]);
             }
 
             if (Object.keys(vendorData).length > 0) {
                 const fields = Object.keys(vendorData).map(key => `${key} = ?`).join(', ');
-                await connection.execute(`UPDATE vendors SET ${fields} WHERE id = ?`, [...Object.values(vendorData), id]);
+                await connection.query(`UPDATE vendors SET ${fields} WHERE id = ?`, [...Object.values(vendorData), id]);
             }
 
             await connection.commit();
@@ -120,12 +120,12 @@ class Vendor {
         try {
             await connection.beginTransaction();
 
-            const [vendorRows] = await connection.execute('SELECT user_id FROM vendors WHERE id = ?', [id]);
+            const [vendorRows] = await connection.query('SELECT user_id FROM vendors WHERE id = ?', [id]);
             if (vendorRows.length > 0 && vendorRows[0].user_id) {
-                await connection.execute('UPDATE users SET deleted_at = CURRENT_TIMESTAMP, status = "inactive" WHERE id = ?', [vendorRows[0].user_id]);
+                await connection.query('UPDATE users SET deleted_at = CURRENT_TIMESTAMP, status = "inactive" WHERE id = ?', [vendorRows[0].user_id]);
             }
 
-            const [result] = await connection.execute('UPDATE vendors SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [id]);
+            const [result] = await connection.query('UPDATE vendors SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [id]);
 
             await connection.commit();
             return result.affectedRows > 0;
