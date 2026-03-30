@@ -125,7 +125,7 @@ class User {
         // Apply Pagination
         if (limit !== undefined && offset !== undefined) {
             query += ' LIMIT ? OFFSET ?';
-            params.push(limit, offset);
+            params.push(Number(limit), Number(offset));
         }
 
         const [rows] = await db.execute(query, params);
