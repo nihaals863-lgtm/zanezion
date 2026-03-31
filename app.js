@@ -24,6 +24,7 @@ const dashboardRoutes = require('./routes/dashboardRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const settingsRoutes = require('./routes/settingsRoutes');
 const saasRoutes = require('./routes/saasRoutes');
+const trackingRoutes = require('./routes/trackingRoutes');
 
 const app = express();
 
@@ -67,6 +68,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/saas', saasRoutes);
+app.use('/api/tracking', trackingRoutes);
 
 // Root Route
 app.get('/', (req, res) => {

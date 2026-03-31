@@ -1,5 +1,7 @@
 const Mission = require('../models/missionModel');
 const { Delivery } = require('../models/logisticsModel');
+const Tracking = require('../models/trackingModel');
+const db = require('../config/db');
 
 // @desc    Convert an order into a mission
 // @route   POST /api/missions/convert/:orderId
@@ -93,9 +95,9 @@ const updateMissionStatus = async (req, res) => {
                 missionData = await Mission.getById(req.params.id);
             }
 
+            // DISPATCH: Auto-create delivery + tracking
             if (status === 'en_route' && missionData) {
                 try {
-                    // Map mission items to delivery items format
                     const deliveryItems = (missionData.items || []).map(item => ({
                         name: item.name || item.item_name || 'Item',
                         qty: item.quantity || item.qty || 1,
@@ -115,8 +117,39 @@ const updateMissionStatus = async (req, res) => {
                         items: deliveryItems
                     });
                     console.log('[DISPATCH] Auto-created delivery ID:', deliveryId, 'for mission:', req.params.id);
+
+                    // Auto-create tracking record
+                    const trackingId = await Tracking.create({
+                        mission_id: missionData.id,
+                        delivery_id: deliveryId,
+                        asset: `Mission #${missionData.id} - Order #${missionData.order_id}`,
+                        location: 'En Route',
+                        signal_strength: 'Strong',
+                        status: 'En Route',
+                        eta: 'Calculating...',
+                        driver_name: missionData.driver_name || null,
+                        vehicle_id: missionData.vehicle_id || null,
+                        plate_number: missionData.plate_number || null
+                    });
+                    console.log('[DISPATCH] Auto-created tracking ID:', trackingId);
                 } catch (delErr) {
-                    console.error('[DISPATCH] Auto-create delivery failed:', delErr.message, delErr.sql || '');
+                    console.error('[DISPATCH] Auto-create failed:', delErr.message, delErr.sql || '');
+                }
+            }
+
+            // COMPLETE: Auto-update delivery status + tracking status
+            if (status === 'completed' && missionData) {
+                try {
+                    // Update delivery status to Delivered
+                    await db.query(
+                        `UPDATE deliveries SET status = 'Delivered', delivery_date = NOW() WHERE order_id = ? AND status != 'Delivered'`,
+                        [missionData.order_id]
+                    );
+                    // Update tracking status to Delivered
+                    await Tracking.updateByMissionId(missionData.id, { status: 'Delivered', signal_strength: 'Completed' });
+                    console.log('[COMPLETE] Delivery + Tracking updated for mission:', req.params.id);
+                } catch (compErr) {
+                    console.error('[COMPLETE] Auto-update failed:', compErr.message);
                 }
             }
 
