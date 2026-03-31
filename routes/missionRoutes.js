@@ -8,6 +8,8 @@ router.post('/convert/:orderId', protect, authorize('super_admin', 'operations',
 router.get('/', protect, missionController.getMissions);
 router.get('/:id', protect, missionController.getMissionById);
 router.post('/:id/assign', protect, authorize('super_admin', 'operations', 'Logistics Lead'), missionController.assignMissionDriver);
+// IMPORTANT: /:id/status MUST be before /:id, otherwise Express matches /:id first
+router.put('/:id/status', protect, missionController.updateMissionStatus);
 router.put('/:id', protect, authorize('super_admin', 'operations'), async (req, res) => {
     try {
         const Mission = require('../models/missionModel');
@@ -18,7 +20,6 @@ router.put('/:id', protect, authorize('super_admin', 'operations'), async (req, 
         res.status(500).json({ success: false, message: error.message });
     }
 });
-router.put('/:id/status', protect, missionController.updateMissionStatus);
 router.delete('/:id', protect, authorize('super_admin', 'operations'), async (req, res) => {
     try {
         const Mission = require('../models/missionModel');
