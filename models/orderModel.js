@@ -257,10 +257,15 @@ class Order {
                     const unit_price = item.unit_price || item.price || 0;
                     const totalPrice = quantity * unit_price;
                     // item_id must reference a valid inventory_items.id or be NULL
-                    let itemId = item.item_id || item.id || null;
-                    // Validate: if itemId is a string like "ORD-xxx" or non-numeric, set to NULL
+                    let itemId = item.item_id || null;
+                    // Don't use item.id as item_id - it's the order_items row id, not inventory reference
                     if (itemId && (typeof itemId === 'string' && isNaN(parseInt(itemId)))) {
                         itemId = null;
+                    }
+                    // Verify itemId exists in inventory_items, otherwise set NULL
+                    if (itemId) {
+                        const [exists] = await connection.query('SELECT id FROM inventory_items WHERE id = ? LIMIT 1', [itemId]);
+                        if (exists.length === 0) itemId = null;
                     }
                     await connection.query(
                         'INSERT INTO order_items (order_id, item_id, name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?)',
