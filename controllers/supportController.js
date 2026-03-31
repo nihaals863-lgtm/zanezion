@@ -47,7 +47,10 @@ const resolveCompanyId = async (user) => {
 
 const getEvents = async (req, res) => {
     try {
-        const events = await Event.getAll(req.user.id);
+        const role = (req.user.role || '').toLowerCase().replace(/[\s_]+/g, '');
+        // SuperAdmin, Concierge, Operations see ALL events (including client-created)
+        const seeAll = ['superadmin', 'concierge', 'conciergemanager', 'operations'].includes(role);
+        const events = seeAll ? await Event.getAllGlobal() : await Event.getAll(req.user.id);
         res.json({ success: true, data: events });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

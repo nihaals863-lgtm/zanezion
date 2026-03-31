@@ -95,8 +95,11 @@ const updateMissionStatus = async (req, res) => {
                 missionData = await Mission.getById(req.params.id);
             }
 
-            // DISPATCH: Auto-create delivery + tracking
+            // DISPATCH: Auto-create delivery + tracking (separate try-catch so one doesn't block the other)
             if (status === 'en_route' && missionData) {
+                let deliveryId = null;
+
+                // 1. Create Delivery
                 try {
                     const deliveryItems = (missionData.items || []).map(item => ({
                         name: item.name || item.item_name || 'Item',
@@ -107,7 +110,7 @@ const updateMissionStatus = async (req, res) => {
                         height: item.height || ''
                     }));
 
-                    const deliveryId = await Delivery.create({
+                    deliveryId = await Delivery.create({
                         order_id: missionData.order_id,
                         vehicle_id: missionData.vehicle_id || null,
                         driver_id: missionData.assigned_driver || null,
@@ -116,9 +119,13 @@ const updateMissionStatus = async (req, res) => {
                         package_details: deliveryItems.length > 0 ? deliveryItems : null,
                         items: deliveryItems
                     });
-                    console.log('[DISPATCH] Auto-created delivery ID:', deliveryId, 'for mission:', req.params.id);
+                    console.log('[DISPATCH] Delivery created ID:', deliveryId);
+                } catch (delErr) {
+                    console.error('[DISPATCH] Delivery create failed:', delErr.message);
+                }
 
-                    // Auto-create tracking record
+                // 2. Create Tracking (independent of delivery success)
+                try {
                     const trackingId = await Tracking.create({
                         mission_id: missionData.id,
                         delivery_id: deliveryId,
@@ -131,9 +138,9 @@ const updateMissionStatus = async (req, res) => {
                         vehicle_id: missionData.vehicle_id || null,
                         plate_number: missionData.plate_number || null
                     });
-                    console.log('[DISPATCH] Auto-created tracking ID:', trackingId);
-                } catch (delErr) {
-                    console.error('[DISPATCH] Auto-create failed:', delErr.message, delErr.sql || '');
+                    console.log('[DISPATCH] Tracking created ID:', trackingId);
+                } catch (trkErr) {
+                    console.error('[DISPATCH] Tracking create failed:', trkErr.message);
                 }
             }
 
