@@ -88,25 +88,27 @@ const updateMissionStatus = async (req, res) => {
 
         if (success) {
             // Auto-create delivery when mission is dispatched
-            if (status === 'en_route') {
+            let missionData = null;
+            if (status === 'en_route' || status === 'completed') {
+                missionData = await Mission.getById(req.params.id);
+            }
+
+            if (status === 'en_route' && missionData) {
                 try {
-                    const mission = await Mission.getById(req.params.id);
-                    if (mission) {
-                        await Delivery.create({
-                            order_id: mission.order_id,
-                            vehicle_id: mission.vehicle_id || null,
-                            driver_id: mission.assigned_driver || null,
-                            mission_type: mission.mission_type || 'Logistics',
-                            destination_type: mission.destination_type || 'Local',
-                            items: mission.items || []
-                        });
-                    }
+                    await Delivery.create({
+                        order_id: missionData.order_id,
+                        vehicle_id: missionData.vehicle_id || null,
+                        driver_id: missionData.assigned_driver || null,
+                        mission_type: missionData.mission_type || 'Logistics',
+                        destination_type: missionData.destination_type || 'Local',
+                        items: missionData.items || []
+                    });
                 } catch (delErr) {
                     console.error('Auto-create delivery failed:', delErr.message);
                 }
             }
 
-            res.json({ success: true, message: 'Mission status updated' });
+            res.json({ success: true, message: 'Mission status updated', data: missionData });
         } else {
             res.status(404).json({ success: false, message: 'Mission not found' });
         }
