@@ -115,35 +115,17 @@ const loginUser = async (req, res) => {
             if (['client', 'saasclient'].includes(normalizedRole) && !resolvedCompanyId && !details?.id) {
                 try {
                     const clientType = normalizedRole === 'saasclient' ? 'SaaS' : 'Personal';
-                    const newClientId = await Client.create({
-                        name: user.name,
-                        email: user.email,
-                        phone: user.phone || null,
-                        password: null, // user already exists, skip user creation duplicate
-                        client_type: clientType,
-                        plan: 'Starter',
-                        billing_cycle: 'Monthly',
-                        source: 'Auto-Provisioned',
-                        status: 'active',
-                        business_name: user.name
-                    });
-                    // If Client.create made a duplicate user, just link existing user
-                    // Update the user's company_id to point to the new client record
+                    // Insert directly into clients table (user already exists, don't use Client.create which creates a new user)
+                    const [insertResult] = await db.query(
+                        `INSERT INTO clients (user_id, client_type, plan, source, status, business_name) VALUES (?, ?, ?, ?, ?, ?)`,
+                        [user.id, clientType, 'Starter', 'Auto-Provisioned', 'active', user.name]
+                    );
+                    const newClientId = insertResult.insertId;
                     await db.query('UPDATE users SET company_id = ? WHERE id = ?', [newClientId, user.id]);
                     resolvedCompanyId = newClientId;
                     details = await Client.getByUserId(user.id);
                 } catch (autoCreateErr) {
-                    // If auto-create fails (e.g. duplicate email), try to find existing client by email
-                    if (autoCreateErr.code === 'ER_DUP_ENTRY') {
-                        const existingClient = await Client.getByUserId(user.id);
-                        if (existingClient?.id) {
-                            resolvedCompanyId = existingClient.id;
-                            details = existingClient;
-                            await db.query('UPDATE users SET company_id = ? WHERE id = ?', [resolvedCompanyId, user.id]);
-                        }
-                    } else {
-                        console.error('Auto-create client failed:', autoCreateErr.message);
-                    }
+                    console.error('Auto-create client record failed:', autoCreateErr.message);
                 }
             }
 
