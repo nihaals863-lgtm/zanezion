@@ -95,16 +95,28 @@ const updateMissionStatus = async (req, res) => {
 
             if (status === 'en_route' && missionData) {
                 try {
-                    await Delivery.create({
+                    // Map mission items to delivery items format
+                    const deliveryItems = (missionData.items || []).map(item => ({
+                        name: item.name || item.item_name || 'Item',
+                        qty: item.quantity || item.qty || 1,
+                        weight: item.weight || '',
+                        length: item.length || '',
+                        width: item.width || '',
+                        height: item.height || ''
+                    }));
+
+                    const deliveryId = await Delivery.create({
                         order_id: missionData.order_id,
                         vehicle_id: missionData.vehicle_id || null,
                         driver_id: missionData.assigned_driver || null,
                         mission_type: missionData.mission_type || 'Logistics',
                         destination_type: missionData.destination_type || 'Local',
-                        items: missionData.items || []
+                        package_details: deliveryItems.length > 0 ? deliveryItems : null,
+                        items: deliveryItems
                     });
+                    console.log('[DISPATCH] Auto-created delivery ID:', deliveryId, 'for mission:', req.params.id);
                 } catch (delErr) {
-                    console.error('Auto-create delivery failed:', delErr.message);
+                    console.error('[DISPATCH] Auto-create delivery failed:', delErr.message, delErr.sql || '');
                 }
             }
 
