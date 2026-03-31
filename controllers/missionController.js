@@ -1,4 +1,5 @@
 const Mission = require('../models/missionModel');
+const { Delivery } = require('../models/logisticsModel');
 
 // @desc    Convert an order into a mission
 // @route   POST /api/missions/convert/:orderId
@@ -86,6 +87,25 @@ const updateMissionStatus = async (req, res) => {
         const success = await Mission.updateStatus(req.params.id, status);
 
         if (success) {
+            // Auto-create delivery when mission is dispatched
+            if (status === 'en_route') {
+                try {
+                    const mission = await Mission.getById(req.params.id);
+                    if (mission) {
+                        await Delivery.create({
+                            order_id: mission.order_id,
+                            vehicle_id: mission.vehicle_id || null,
+                            driver_id: mission.assigned_driver || null,
+                            mission_type: mission.mission_type || 'Logistics',
+                            destination_type: mission.destination_type || 'Local',
+                            items: mission.items || []
+                        });
+                    }
+                } catch (delErr) {
+                    console.error('Auto-create delivery failed:', delErr.message);
+                }
+            }
+
             res.json({ success: true, message: 'Mission status updated' });
         } else {
             res.status(404).json({ success: false, message: 'Mission not found' });
