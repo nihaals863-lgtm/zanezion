@@ -94,6 +94,10 @@ class InventoryItem {
         try {
             await connection.beginTransaction();
 
+            // Normalize type to match DB ENUM: 'in', 'out', 'adjustment'
+            const typeMap = { 'in': 'in', 'entry': 'in', 'add': 'in', 'out': 'out', 'issue': 'out', 'remove': 'out', 'adjustment': 'adjustment', 'adjust': 'adjustment' };
+            const normalizedType = typeMap[(type || '').toLowerCase()] || 'adjustment';
+
             // Update quantity
             const operator = ['in', 'entry'].includes(type) ? '+' : '-';
             await connection.query(
@@ -114,7 +118,7 @@ class InventoryItem {
             // Log stock movement
             await connection.query(
                 'INSERT INTO stock_movements (item_id, quantity, type, reference_type, reference_id, user_id) VALUES (?, ?, ?, ?, ?, ?)',
-                [id, qty, type, reference_type, reference_id, user_id]
+                [id, qty, normalizedType, reference_type, reference_id, user_id]
             );
 
             await connection.commit();
