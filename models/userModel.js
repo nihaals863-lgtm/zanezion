@@ -19,6 +19,20 @@ class User {
         try {
             await connection.beginTransaction();
 
+            // If a soft-deleted user exists with same email, clean it up first
+            const [deletedUser] = await connection.query(
+                'SELECT id FROM users WHERE email = ? AND deleted_at IS NOT NULL', [email]
+            );
+            if (deletedUser.length > 0) {
+                const oldId = deletedUser[0].id;
+                // Remove related records so FK constraints don't block
+                await connection.query('DELETE FROM staff_details WHERE user_id = ?', [oldId]);
+                await connection.query('DELETE FROM clients WHERE user_id = ?', [oldId]);
+                await connection.query('UPDATE events SET manager_id = NULL WHERE manager_id = ?', [oldId]);
+                await connection.query('UPDATE orders SET client_id = NULL WHERE client_id = ?', [oldId]);
+                await connection.query('DELETE FROM users WHERE id = ?', [oldId]);
+            }
+
             // 1. Create User (Core Auth)
             const [userResult] = await connection.query(
                 `INSERT INTO users (name, email, phone, password, role, status, company_id) VALUES (?, ?, ?, ?, ?, ?, ?)`,

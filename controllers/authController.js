@@ -326,7 +326,38 @@ const registerStaff = async (req, res) => {
 
         const userExists = await User.findByEmail(userData.email);
         if (userExists) {
-            return res.status(400).json({ success: false, message: 'User already exists' });
+            // If existing user is inactive, reactivate with new data
+            if (userExists.status === 'inactive' || userExists.status === 'Inactive') {
+                const bcrypt = require('bcryptjs');
+                const salt = await bcrypt.genSalt(10);
+                const hashedPassword = userData.password ? await bcrypt.hash(userData.password, salt) : userExists.password;
+                await db.query(
+                    `UPDATE users SET name = ?, phone = ?, password = ?, role = ?, status = ?,
+                     has_passport = ?, has_license = ?, has_nib_doc = ?, has_police_record = ?,
+                     nib_number = ?, birthday = ?
+                     WHERE id = ?`,
+                    [
+                        userData.name || userExists.name,
+                        userData.phone || userExists.phone,
+                        hashedPassword,
+                        userData.role,
+                        userData.status,
+                        userData.has_passport || 0,
+                        userData.has_license || 0,
+                        userData.has_nib_doc || 0,
+                        userData.has_police_record || 0,
+                        userData.nib_number || null,
+                        userData.birthday || null,
+                        userExists.id
+                    ]
+                );
+                return res.status(201).json({
+                    success: true,
+                    message: 'Account reactivated. Application submitted. Status: Pending Approval.',
+                    data: { id: userExists.id, email: userData.email }
+                });
+            }
+            return res.status(400).json({ success: false, message: 'A user with this email already exists. Use a different email or contact support.' });
         }
 
         const userId = await User.create(userData);
