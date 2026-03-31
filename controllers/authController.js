@@ -105,16 +105,31 @@ const loginUser = async (req, res) => {
                 console.error('Error fetching menu permissions:', permError);
             }
 
+            // Resolve companyId reliably for client/saas_client roles
+            let resolvedCompanyId = user.company_id || null;
+            if (!resolvedCompanyId && ['client', 'saasclient'].includes(normalizedRole) && details?.id) {
+                resolvedCompanyId = details.id;
+            }
+
+            // Block login for client/saas_client if no tenant could be resolved
+            if (['client', 'saasclient'].includes(normalizedRole) && !resolvedCompanyId) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Your account is not linked to any company. Please contact ZaneZion support.'
+                });
+            }
+
             res.json({
                 success: true,
                 data: {
                     ...user,
                     ...details,
                     clientId: details?.id,
+                    companyId: resolvedCompanyId,
                     id: user.id,
                     role: user.role,
                     menuPermissions,
-                    token: generateToken(user.id, user.role, user.company_id || (['client', 'saasclient'].includes(normalizedRole) ? (details?.id || null) : null))
+                    token: generateToken(user.id, user.role, resolvedCompanyId)
                 }
             });
         } else {

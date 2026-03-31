@@ -3,10 +3,11 @@ const router = express.Router();
 const { getInvoices, createInvoice, payInvoice, createPayrollRecord, getAllPayroll, getMyPayroll, deletePayroll, updateInvoice, deleteInvoice, updatePayroll } = require('../controllers/financeController');
 const { protect } = require('../middleware/authMiddleware');
 const { authorize } = require('../middleware/roleMiddleware');
+const { tenantIsolation } = require('../middleware/tenantMiddleware');
 
 // Invoice routes
 router.route('/invoices')
-    .get(protect, getInvoices)
+    .get(protect, tenantIsolation, getInvoices)
     .post(protect, authorize('super_admin', 'operations'), createInvoice);
 
 router.route('/invoices/:id')

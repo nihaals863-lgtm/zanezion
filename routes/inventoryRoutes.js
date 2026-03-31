@@ -3,9 +3,10 @@ const router = express.Router();
 const { getInventoryItems, getInventoryItemById, createInventoryItem, updateInventoryItem, adjustStock, getInventoryAlerts } = require('../controllers/inventoryController');
 const { protect } = require('../middleware/authMiddleware');
 const { authorize } = require('../middleware/roleMiddleware');
+const { tenantIsolation } = require('../middleware/tenantMiddleware');
 
 router.route('/')
-    .get(protect, getInventoryItems)
+    .get(protect, tenantIsolation, getInventoryItems)
     .post(protect, authorize('super_admin', 'operations', 'inventory'), createInventoryItem);
 
 router.get('/alerts', protect, getInventoryAlerts);

@@ -8,6 +8,7 @@ const {
 } = require('../controllers/logisticsController');
 const { protect } = require('../middleware/authMiddleware');
 const { authorize } = require('../middleware/roleMiddleware');
+const { tenantIsolation } = require('../middleware/tenantMiddleware');
 
 // Vehicle routes
 router.route('/vehicles')
@@ -20,7 +21,7 @@ router.route('/vehicles/:id')
 
 // Delivery routes
 router.route('/deliveries')
-    .get(protect, getDeliveries)
+    .get(protect, tenantIsolation, getDeliveries)
     .post(protect, authorize('super_admin', 'logistics'), createDelivery);
 
 router.route('/deliveries/:id/status')

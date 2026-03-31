@@ -10,15 +10,23 @@ const getOrders = async (req, res) => {
         const { status } = req.query;
         const role = (req.user.role || '').toLowerCase().replace(/[\s_]+/g, '');
         const isGlobalRole = ['superadmin', 'operations', 'procurement', 'concierge', 'conciergemanager'].includes(role);
-        const companyId = isGlobalRole ? null : req.user.companyId;
-        let { rows: orders, total } = await Order.getAll(companyId, { limit, offset, status });
 
-        // Client role fallback: if companyId missing, filter by user.id
-        if (['client', 'saasclient'].includes(role) && !req.user.companyId) {
-             orders = orders.filter(o => o.client_id === req.user.id);
-             total = orders.length;
+        // For client/saas_client: MUST have companyId, otherwise return empty
+        const isClientRole = ['client', 'saasclient'].includes(role);
+        let companyId;
+        if (isGlobalRole) {
+            companyId = null; // Global roles see all orders
+        } else if (isClientRole) {
+            companyId = req.user.companyId;
+            if (!companyId) {
+                // No companyId = no data. Never leak all orders.
+                return res.json(formatPaginatedResponse([], 0, page, limit));
+            }
+        } else {
+            companyId = req.user.companyId || null;
         }
 
+        const { rows: orders, total } = await Order.getAll(companyId, { limit, offset, status });
         res.json(formatPaginatedResponse(orders, total, page, limit));
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -32,6 +40,15 @@ const getOrderById = async (req, res) => {
     try {
         const order = await Order.getById(req.params.id);
         if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+
+        // Tenant isolation: client/saas_client can only see their own orders
+        const role = (req.user.role || '').toLowerCase().replace(/[\s_]+/g, '');
+        if (['client', 'saasclient'].includes(role) && req.user.companyId) {
+            if (order.company_id !== req.user.companyId) {
+                return res.status(403).json({ success: false, message: 'Access denied' });
+            }
+        }
+
         res.json({ success: true, data: order });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

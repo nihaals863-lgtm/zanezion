@@ -3,14 +3,15 @@ const router = express.Router();
 const { getOrders, getOrderById, createOrder, updateOrderStatus, getProjects, createProject, createProjectFromOrder, updateProjectStatus, deleteOrder } = require('../controllers/orderController');
 const { protect } = require('../middleware/authMiddleware');
 const { authorize } = require('../middleware/roleMiddleware');
+const { tenantIsolation } = require('../middleware/tenantMiddleware');
 
-// Order routes
+// Order routes — tenantIsolation ensures client/saas_client always have companyId
 router.route('/')
-    .get(protect, getOrders)
-    .post(protect, createOrder);
+    .get(protect, tenantIsolation, getOrders)
+    .post(protect, tenantIsolation, createOrder);
 
 router.route('/:id')
-    .get(protect, getOrderById)
+    .get(protect, tenantIsolation, getOrderById)
     .put(protect, authorize('super_admin', 'operations', 'client', 'saas_client'), async (req, res) => {
         try {
             const { Order } = require('../models/orderModel');
