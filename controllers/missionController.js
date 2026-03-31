@@ -9,7 +9,7 @@ const convertOrderToMission = async (req, res) => {
         const missionData = req.body;
 
         const missionId = await Mission.createFromOrder(orderId, missionData);
-        res.status(201).json({ success: true, message: 'Order successfully converted to Mission', missionId });
+        res.status(201).json({ success: true, message: 'Order successfully converted to Mission', data: { id: missionId } });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
