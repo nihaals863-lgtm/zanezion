@@ -89,12 +89,12 @@ class Order {
     }
 
     static async getAll(companyId, pagination = {}) {
-        const { limit, offset, status, search } = pagination;
+        const { limit, offset, status, search, excludeSaaS } = pagination;
 
         let query = `
-            SELECT o.*, COALESCE(c.business_name, u.name) AS client_name, c.client_type, v.name AS vendor_name 
-             FROM orders o 
-             LEFT JOIN clients c ON o.company_id = c.id 
+            SELECT o.*, COALESCE(c.business_name, u.name) AS client_name, c.client_type, v.name AS vendor_name
+             FROM orders o
+             LEFT JOIN clients c ON o.company_id = c.id
              LEFT JOIN users u ON o.client_id = u.id
              LEFT JOIN vendors v ON o.vendor_id = v.id
              WHERE o.deleted_at IS NULL
@@ -106,11 +106,22 @@ class Order {
             params.push(companyId);
         }
 
+        // SaaS isolation: platform roles must NOT see SaaS client orders
+        // Uses NOT EXISTS subquery - bulletproof regardless of JOIN/NULL behavior
+        if (excludeSaaS) {
+            query += ` AND NOT EXISTS (
+                SELECT 1 FROM clients sc
+                LEFT JOIN users su ON sc.user_id = su.id
+                WHERE sc.id = o.company_id
+                AND (sc.client_type = 'SaaS' OR su.role = 'SaaS Client' OR su.role = 'saas_client')
+            )`;
+        }
+
         if (status && status !== 'All') {
             if (status === 'Active') {
-                query += ' AND o.status != "Delivered"';
+                query += ' AND o.status IN ("pending_review", "approved", "in_progress")';
             } else if (status === 'Closed') {
-                query += ' AND o.status = "Delivered"';
+                query += ' AND o.status IN ("completed", "cancelled", "project_converted")';
             } else {
                 query += ' AND o.status = ?';
                 params.push(status);

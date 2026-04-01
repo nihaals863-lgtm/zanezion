@@ -14,8 +14,13 @@ const getOrders = async (req, res) => {
         // For client/saas_client: MUST have companyId, otherwise return empty
         const isClientRole = ['client', 'saasclient'].includes(role);
         let companyId;
+        let excludeSaaS = false;
+
         if (isGlobalRole) {
-            companyId = null; // Global roles see all orders
+            companyId = null;
+            // Platform roles must NOT see SaaS client orders.
+            // SaaS clients are independent businesses - their orders stay in their own system.
+            excludeSaaS = true;
         } else if (isClientRole) {
             companyId = req.user.companyId;
             if (!companyId) {
@@ -26,7 +31,9 @@ const getOrders = async (req, res) => {
             companyId = req.user.companyId || null;
         }
 
-        const { rows: orders, total } = await Order.getAll(companyId, { limit, offset, status });
+        console.log('[GET ORDERS] role:', role, '| isGlobal:', isGlobalRole, '| excludeSaaS:', excludeSaaS, '| companyId:', companyId);
+        const { rows: orders, total } = await Order.getAll(companyId, { limit, offset, status, excludeSaaS });
+        console.log('[GET ORDERS] returned:', total, 'orders');
         res.json(formatPaginatedResponse(orders, total, page, limit));
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
